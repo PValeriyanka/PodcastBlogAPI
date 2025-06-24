@@ -167,7 +167,7 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int?>("ParentId")
@@ -176,7 +176,7 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.Property<int>("PostId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
+                    b.Property<int?>("Status")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
@@ -210,7 +210,42 @@ namespace PodcastBlog.Infrastructure.Migrations
                             PostId = 1,
                             Status = 1,
                             UserId = 1
+                        },
+                        new
+                        {
+                            CommentId = 3,
+                            Content = "Comment #3",
+                            CreatedAt = new DateTime(2025, 1, 5, 17, 5, 0, 0, DateTimeKind.Unspecified),
+                            ParentId = 2,
+                            PostId = 1,
+                            Status = 1,
+                            UserId = 2
                         });
+                });
+
+            modelBuilder.Entity("PodcastBlog.Domain.Models.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("PodcastBlog.Domain.Models.Podcast", b =>
@@ -225,13 +260,13 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("Bitrate")
+                        .HasColumnType("int");
+
                     b.Property<string>("CoverImage")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Duration")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EpisodeNumber")
+                    b.Property<int?>("Duration")
                         .HasColumnType("int");
 
                     b.Property<int>("ListenCount")
@@ -252,20 +287,20 @@ namespace PodcastBlog.Infrastructure.Migrations
                         new
                         {
                             PodcastId = 1,
-                            AudioFile = "podcast_1.mp3",
-                            Duration = 30,
-                            EpisodeNumber = 1,
+                            AudioFile = "/audio/fake1.mp3",
+                            Duration = 180,
                             ListenCount = 0,
-                            Title = "Podcast #1"
+                            Title = "Podcast #1",
+                            Transcript = "Это фиктивная транскрипция."
                         },
                         new
                         {
                             PodcastId = 2,
-                            AudioFile = "podcast_2.mp3",
-                            Duration = 45,
-                            EpisodeNumber = 2,
+                            AudioFile = "/audio/fake2.wav",
+                            Duration = 240,
                             ListenCount = 0,
-                            Title = "Podcast #2"
+                            Title = "Podcast #2",
+                            Transcript = "Тут могла бы быть ваша реклама."
                         });
                 });
 
@@ -283,9 +318,6 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.Property<string>("Content")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("Likes")
-                        .HasColumnType("int");
-
                     b.Property<int?>("PodcastId")
                         .HasColumnType("int");
 
@@ -299,12 +331,6 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UserId1")
-                        .HasColumnType("int");
-
                     b.Property<int>("Views")
                         .HasColumnType("int");
 
@@ -312,11 +338,9 @@ namespace PodcastBlog.Infrastructure.Migrations
 
                     b.HasIndex("AuthorId");
 
-                    b.HasIndex("PodcastId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId1");
+                    b.HasIndex("PodcastId")
+                        .IsUnique()
+                        .HasFilter("[PodcastId] IS NOT NULL");
 
                     b.ToTable("Posts");
 
@@ -326,10 +350,9 @@ namespace PodcastBlog.Infrastructure.Migrations
                             PostId = 1,
                             AuthorId = 2,
                             Content = "The first Post",
-                            Likes = 0,
                             PodcastId = 1,
                             PublishedAt = new DateTime(2024, 10, 1, 13, 30, 0, 0, DateTimeKind.Unspecified),
-                            Status = 4,
+                            Status = 1,
                             Title = "Post #1",
                             Views = 0
                         },
@@ -338,11 +361,20 @@ namespace PodcastBlog.Infrastructure.Migrations
                             PostId = 2,
                             AuthorId = 2,
                             Content = "The second Post",
-                            Likes = 0,
                             PodcastId = 2,
-                            PublishedAt = new DateTime(2024, 12, 11, 14, 30, 0, 0, DateTimeKind.Unspecified),
-                            Status = 4,
+                            PublishedAt = new DateTime(2024, 11, 5, 14, 30, 0, 0, DateTimeKind.Unspecified),
+                            Status = 0,
                             Title = "Post #2",
+                            Views = 0
+                        },
+                        new
+                        {
+                            PostId = 3,
+                            AuthorId = 2,
+                            Content = "The third Post",
+                            PublishedAt = new DateTime(2025, 12, 11, 17, 35, 0, 0, DateTimeKind.Unspecified),
+                            Status = 1,
+                            Title = "Post #3",
                             Views = 0
                         });
                 });
@@ -401,6 +433,9 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("EmailNotify")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -418,9 +453,6 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("NotifyNewEpisodes")
-                        .HasColumnType("bit");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
@@ -462,13 +494,13 @@ namespace PodcastBlog.Infrastructure.Migrations
                         {
                             Id = 2,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "725fd62d-7ee2-4886-83e9-de622cd78865",
+                            ConcurrencyStamp = "272774b1-201d-4894-88f9-0e5b7bf2aac8",
                             Email = "author_1@blog.com",
                             EmailConfirmed = false,
+                            EmailNotify = true,
                             LockoutEnabled = false,
                             Name = "Author #1",
-                            NotifyNewEpisodes = false,
-                            PasswordHash = "AQAAAAIAAYagAAAAELupRcBOs3+LADOuNRbwGZlO2V5LFYyMPpPD+gQVnZ7Hwmjb8mpYTDVfAlFrfNdQ7A==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEAYAj21f1RUOjjS7H0RPiGKm6HQw+aHbj3H2jfVwn1TkPeZYmmYGpP6rNnVxyerk9w==",
                             PhoneNumberConfirmed = false,
                             Role = "Author",
                             TwoFactorEnabled = false,
@@ -478,13 +510,13 @@ namespace PodcastBlog.Infrastructure.Migrations
                         {
                             Id = 1,
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "4028e7ba-265d-428d-8e1f-0ebf3b4e1f9c",
-                            Email = "admin@blog.com",
+                            ConcurrencyStamp = "b534df78-a22f-497f-a2ba-2814372beed2",
+                            Email = "lera.pinchukova@gmail.com",
                             EmailConfirmed = false,
+                            EmailNotify = true,
                             LockoutEnabled = false,
                             Name = "admin",
-                            NotifyNewEpisodes = false,
-                            PasswordHash = "AQAAAAIAAYagAAAAEIpS3XBFlRNzEkgSJhWvWcaXmCJKirIEjTynLndicwmUE1HONni+rc/D5d9MwS0cCA==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEA+DJPlAU7dZf8Ee1xsbhb0XSmH2n8VzG/qMt+Vx2J6+Y3ZYKmqOop5ETSv2RFRPtQ==",
                             PhoneNumberConfirmed = false,
                             Role = "Administrator",
                             TwoFactorEnabled = false,
@@ -520,6 +552,21 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.HasIndex("TagsTagId");
 
                     b.ToTable("PostTag");
+                });
+
+            modelBuilder.Entity("UserPostLikes", b =>
+                {
+                    b.Property<int>("LikedPostId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LikesId")
+                        .HasColumnType("int");
+
+                    b.HasKey("LikedPostId", "LikesId");
+
+                    b.HasIndex("LikesId");
+
+                    b.ToTable("UserPostLikes");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -577,13 +624,12 @@ namespace PodcastBlog.Infrastructure.Migrations
                 {
                     b.HasOne("PodcastBlog.Domain.Models.Comment", "Parent")
                         .WithMany("Replies")
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ParentId");
 
                     b.HasOne("PodcastBlog.Domain.Models.Post", "Post")
                         .WithMany("Comments")
                         .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("PodcastBlog.Domain.Models.User", "User")
@@ -599,6 +645,17 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PodcastBlog.Domain.Models.Notification", b =>
+                {
+                    b.HasOne("PodcastBlog.Domain.Models.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PodcastBlog.Domain.Models.Post", b =>
                 {
                     b.HasOne("PodcastBlog.Domain.Models.User", "Author")
@@ -608,17 +665,8 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("PodcastBlog.Domain.Models.Podcast", "Podcast")
-                        .WithMany()
-                        .HasForeignKey("PodcastId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("PodcastBlog.Domain.Models.User", null)
-                        .WithMany("Likes")
-                        .HasForeignKey("UserId");
-
-                    b.HasOne("PodcastBlog.Domain.Models.User", null)
-                        .WithMany("Views")
-                        .HasForeignKey("UserId1");
+                        .WithOne()
+                        .HasForeignKey("PodcastBlog.Domain.Models.Post", "PodcastId");
 
                     b.Navigation("Author");
 
@@ -630,13 +678,13 @@ namespace PodcastBlog.Infrastructure.Migrations
                     b.HasOne("PodcastBlog.Domain.Models.User", "Author")
                         .WithMany("Followers")
                         .HasForeignKey("AuthorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("PodcastBlog.Domain.Models.User", "Subscriber")
                         .WithMany("Subscriptions")
                         .HasForeignKey("SubscriberId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Author");
@@ -659,6 +707,21 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UserPostLikes", b =>
+                {
+                    b.HasOne("PodcastBlog.Domain.Models.Post", null)
+                        .WithMany()
+                        .HasForeignKey("LikedPostId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("PodcastBlog.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("LikesId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("PodcastBlog.Domain.Models.Comment", b =>
                 {
                     b.Navigation("Replies");
@@ -675,13 +738,11 @@ namespace PodcastBlog.Infrastructure.Migrations
 
                     b.Navigation("Followers");
 
-                    b.Navigation("Likes");
+                    b.Navigation("Notifications");
 
                     b.Navigation("Posts");
 
                     b.Navigation("Subscriptions");
-
-                    b.Navigation("Views");
                 });
 #pragma warning restore 612, 618
         }

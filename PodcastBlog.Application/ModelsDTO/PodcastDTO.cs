@@ -1,18 +1,14 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
 
-namespace PodcastBlog.Application.ModelsDTO
+namespace PodcastBlog.Application.ModelsDto
 {
-    public class PodcastDTO
+    public class PodcastDto
     {
         public int PodcastId { get; set; }
-        [Required]
-        public string Title { get; set; }
-        [Required]
-        public string AudioFile { get; set; }
+        required public string Title { get; set; }
+        required public IFormFile? AudioUpload { get; set; }
+        public IFormFile? CoverImageUpload { get; set; }
         public string? Transcript { get; set; }
-        public string? CoverImage { get; set; }
-        public int Duration { get; set; }
-        public int EpisodeNumber { get; set; }
-        public int ListenCount { get; set; }
+        public int? ListenCount { get; set; }
     }
 }

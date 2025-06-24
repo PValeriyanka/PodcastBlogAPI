@@ -1,47 +1,103 @@
 ﻿using AutoMapper;
-using PodcastBlog.Application.IServices;
-using PodcastBlog.Application.ModelsDTO;
-using PodcastBlog.Domain.IRepositories;
+using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Application.Interfaces.Strategies;
+using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 
 namespace PodcastBlog.Application.Services
 {
     public class PodcastService : IPodcastService
     {
-        private readonly IPodcastRepository _podcastRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMediaService _audioService;
+        private readonly IPodcastCleanupStrategy _cleanup;
         private readonly IMapper _mapper;
 
-        public PodcastService(IPodcastRepository podcastRepository, IMapper mapper)
+        public PodcastService(IUnitOfWork unitOfWork, IMediaService audioService, IPodcastCleanupStrategy cleanup, IMapper mapper)
         {
-            _podcastRepository = podcastRepository;
+            _unitOfWork = unitOfWork;
+            _audioService = audioService;
+            _cleanup = cleanup;
             _mapper = mapper;
         }
 
-        public async Task<PodcastDTO> GetPodcastById(int id, CancellationToken cancellationToken)
+        public async Task<PodcastDto> GetPodcastByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var podcast = await _podcastRepository.GetPodcastById(id, cancellationToken);
-            var podcastDTO = _mapper.Map<PodcastDTO>(podcast);
+            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
 
-            return podcastDTO;
+            var podcastDto = _mapper.Map<PodcastDto>(podcast);
+
+            return podcastDto;
         }
 
-        public async Task CreatePodcast(PodcastDTO podcastDTO, CancellationToken cancellationToken)
+        public async Task CreatePodcastAsync(PodcastDto podcastDto, CancellationToken cancellationToken)
         {
-            var podcast = _mapper.Map<Podcast>(podcastDTO);
+            var podcast = _mapper.Map<Podcast>(podcastDto);
 
-            await _podcastRepository.CreatePodcast(podcast, cancellationToken);
+            if (podcastDto.CoverImageUpload is not null)
+            {
+                podcast.CoverImage = await _audioService.GetCoverImageAsync(podcastDto.CoverImageUpload, cancellationToken);
+            }
+
+            if (podcastDto.AudioUpload is not null)
+            {
+                var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(podcastDto.AudioUpload, cancellationToken);
+
+                podcast.AudioFile = path;
+                podcast.Duration = duration;
+                podcast.ListenCount = 0;
+                podcast.Transcript = transcript;
+            }
+
+            await _unitOfWork.Podcasts.CreateAsync(podcast, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdatePodcast(PodcastDTO podcastDTO, CancellationToken cancellationToken)
+        public async Task UpdatePodcastAsync(PodcastDto podcastDto, CancellationToken cancellationToken)
         {
-            var podcast = _mapper.Map<Podcast>(podcastDTO);
+            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(podcastDto.PodcastId, cancellationToken);
 
-            await _podcastRepository.UpdatePodcast(podcast, cancellationToken);
+            _mapper.Map(podcastDto, podcast);
+
+            if (podcastDto.CoverImageUpload is not null)
+            {
+                podcast.CoverImage = await _audioService.GetCoverImageAsync(podcastDto.CoverImageUpload, cancellationToken);
+            }
+
+            if (podcastDto.AudioUpload is not null)
+            {
+                var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(podcastDto.AudioUpload, cancellationToken);
+                
+                podcast.AudioFile = path;
+                podcast.Duration = duration;
+                podcast.Transcript = transcript;
+            }
+
+            await _unitOfWork.Podcasts.UpdateAsync(podcast, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeletePodcast(int id, CancellationToken cancellationToken)
+        public async Task DeletePodcastAsync(int id, CancellationToken cancellationToken)
         {
-            await _podcastRepository.DeletePodcast(id, cancellationToken);
+            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
+
+            await _cleanup.CleanupAsync(podcast, cancellationToken);
+
+            await _unitOfWork.Podcasts.DeleteAsync(podcast, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task ListeningAsync(int podcastId, CancellationToken cancellationToken)
+        {
+            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(podcastId, cancellationToken);
+
+            podcast.ListenCount += 1;
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }

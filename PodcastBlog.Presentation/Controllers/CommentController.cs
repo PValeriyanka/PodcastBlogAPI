@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PodcastBlog.Application.IServices;
-using PodcastBlog.Application.ModelsDTO;
+using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Application.ModelsDto;
 using PodcastBlog.Domain.Parameters;
 using System.Text.Json;
 
@@ -19,47 +19,47 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/comments
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PostDTO>>> GetCommentsByPostPaged(int postId, [FromQuery] Parameters parameters, CancellationToken cancellationToken)
+        public async Task<ActionResult<IEnumerable<CommentDto>>> GetCommentsByPostPagedAsync(int postId, [FromQuery] Parameters parameters, CancellationToken cancellationToken)
         {
-            var commentsDTO = await _commentService.GetCommentsByPostPaged(postId, parameters, cancellationToken);
+            var commentsDto = await _commentService.GetCommentsByPostPagedAsync(postId, parameters, cancellationToken);
 
-            Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(commentsDTO.MetaData));
+            Response.Headers.Add("X-Pagination", JsonSerializer.Serialize(commentsDto.MetaData));
 
-            return Ok(commentsDTO);
+            return Ok(commentsDto);
         }
 
         // GET: api/comments/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<CommentDTO>> GetCommentById(int id, CancellationToken cancellationToken)
+        public async Task<ActionResult<CommentDto>> GetCommentByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var commentDTO = await _commentService.GetCommentById(id, cancellationToken);
+            var commentDto = await _commentService.GetCommentByIdAsync(id, cancellationToken);
 
-            return Ok(commentDTO);
+            return Ok(commentDto);
         }
 
         // POST: api/comments
         [HttpPost]
-        public async Task<ActionResult<CommentDTO>> CreateComment([FromBody] CommentDTO commentDTO, CancellationToken cancellationToken)
+        public async Task<ActionResult<CommentDto>> CreateCommentAsync([FromBody] CommentDto commentDto, int? parentId, CancellationToken cancellationToken)
         {
-            await _commentService.CreateComment(commentDTO, cancellationToken);
+            await _commentService.CreateCommentAsync(commentDto, parentId, cancellationToken);
 
-            return CreatedAtAction(nameof(GetCommentById), new { id = commentDTO.CommentId }, commentDTO);
+            return CreatedAtAction(nameof(GetCommentByIdAsync), new { id = commentDto.CommentId }, commentDto);
         }
 
-        // PUT: api/comments/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComment([FromBody] CommentDTO commentDTO, CancellationToken cancellationToken)
+        // PUT: api/comments/publish/{id}
+        [HttpPut("publish/{id}")]
+        public async Task<IActionResult> PublishCommentAsync(int id, CancellationToken cancellationToken)
         {
-            await _commentService.UpdateComment(commentDTO, cancellationToken);
+            await _commentService.PublishCommentAsync(id, cancellationToken);
 
             return NoContent();
         }
 
         // DELETE: api/comments/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteComment(int id, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeleteCommentAsync(int id, CancellationToken cancellationToken)
         {
-            await _commentService.DeleteComment(id, cancellationToken);
+            await _commentService.DeleteCommentAsync(id, cancellationToken);
 
             return NoContent();
         }

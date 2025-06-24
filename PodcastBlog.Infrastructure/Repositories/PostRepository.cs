@@ -1,40 +1,95 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PodcastBlog.Domain.IRepositories;
+using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using PodcastBlog.Domain.Parameters.ModelParameters;
 
 namespace PodcastBlog.Infrastructure.Repositories
 {
-    public class PostRepository : IPostRepository
+    public class PostRepository : Repository<Post>, IPostRepository
     {
-        private readonly PodcastBlogContext _context;
+        public PostRepository(PodcastBlogContext _context) : base(_context) { }
 
-        public PostRepository(PodcastBlogContext context)
+        public async Task<List<Post>> GetSheduledPostsAsync(CancellationToken cancellationToken)
         {
-            _context = context;
+            var now = DateTime.UtcNow;
+
+            return await _context.Posts
+                .Where(p => p.Status == PostStatus.Scheduled && p.PublishedAt <= now)
+                .Include(p => p.Author)
+                .Include(p => p.Comments)
+                .Include(p => p.Podcast)
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<PagedList<Post>> GetAllPostsPaged(PostParameters parameters, CancellationToken cancellationToken)
+        public async Task<PagedList<Post>> GetPostsPagedAsync(PostParameters parameters, User? author, string? type, CancellationToken cancellationToken)
         {
             var postsQuery = _context.Posts
                 .Include(p => p.Author)
                 .Include(p => p.Podcast)
+                .Include(p => p.Tags)
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.User)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.Replies)
                 .AsQueryable();
 
+            switch (type)
+            {
+                case "Recommends":
+                    var subscribedAuthorIds = await _context.UserSubscriptions
+                        .Where(s => s.SubscriberId == author.Id)
+                        .Select(s => s.AuthorId)
+                        .ToListAsync(cancellationToken);
+
+                    postsQuery = postsQuery.Where(p => subscribedAuthorIds.Contains(p.Author.Id) && p.Status == PostStatus.Published);
+                    break;
+                case "Published":
+                    postsQuery = postsQuery.Where(p => p.Author.Id == author.Id && p.Status == PostStatus.Published);
+                    break;
+                case "Sheduled":
+                    postsQuery = postsQuery.Where(p => p.Author.Id == author.Id && p.Status == PostStatus.Scheduled);
+                    break;
+                case "Draft":
+                    postsQuery = postsQuery.Where(p => p.Author.Id == author.Id && p.Status == PostStatus.Draft);
+                    break;
+                default:
+                    postsQuery = postsQuery.Where(p => p.Status == PostStatus.Published);
+                    break;
+            }
+
             if (!string.IsNullOrWhiteSpace(parameters.searchByDate) && DateTime.TryParse(parameters.searchByDate, out DateTime date))
+            {
                 postsQuery = postsQuery.Where(p => p.PublishedAt.Day == date.Day && p.PublishedAt.Month == date.Month && p.PublishedAt.Year == date.Year);
+            }
+
             if (!string.IsNullOrWhiteSpace(parameters.searchByAuthor))
+            {
                 postsQuery = postsQuery.Where(p => p.Author.UserName == parameters.searchByAuthor || p.Author.Name == parameters.searchByAuthor);
+            }
+
             if (!string.IsNullOrWhiteSpace(parameters.searchByContent))
+            {
                 postsQuery = postsQuery.Where(p => p.Content.Contains(parameters.searchByContent));
+            }
+
             if (!string.IsNullOrWhiteSpace(parameters.searchByTags))
+            {
                 foreach (string tag in parameters.searchByTags.Split(',', '#', ' '))
+                {
                     if (!string.IsNullOrWhiteSpace(tag))
+                    {
                         postsQuery = postsQuery.Where(p => p.Tags.Any(t => t.Name == tag)).Distinct();
+                    }
+                }
+            }
 
             if (parameters.searchByDuring.HasValue)
+            {
                 postsQuery = postsQuery.Where(p => p.Podcast.Duration >= parameters.searchByDuring.Value * 60 - 60 * 5 && p.Podcast.Duration <= parameters.searchByDuring.Value * 60 + 60 * 5);  // Допуск в +-5 минут
+            }
+
             switch (parameters.sortBy)
             {
                 case "DateUp":
@@ -61,28 +116,24 @@ namespace PodcastBlog.Infrastructure.Repositories
             return new PagedList<Post>(posts, count, parameters.PageNumber, parameters.PageSize);
         }
 
-        public async Task<Post> GetPostById(int id, CancellationToken cancellationToken)
+        public Task<Post?> GetByPodcastIdAsync(int podcastId, CancellationToken cancellationToken)
         {
-            return await _context.Posts.Include(p => p.Author).Include(p => p.Podcast).FirstOrDefaultAsync(p => p.PostId == id, cancellationToken);
+            return _context.Posts
+                .FirstOrDefaultAsync(p => p.PodcastId == podcastId, cancellationToken);
         }
 
-        public async Task CreatePost(Post post, CancellationToken cancellationToken)
+        public override async Task<Post?> GetByIdAsync(int id, CancellationToken cancellationToken)
         {
-            await _context.Posts.AddAsync(post, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task UpdatePost(Post post, CancellationToken cancellationToken)
-        {
-            _context.Posts.Update(post);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task DeletePost(int id, CancellationToken cancellationToken)
-        {
-            var post = await GetPostById(id, cancellationToken);
-            _context.Posts.Remove(post);
-            await _context.SaveChangesAsync(cancellationToken);
+            return await _context.Posts
+                .Include(p => p.Author)
+                .Include(p => p.Podcast)
+                .Include(p => p.Tags)
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.User)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.Replies)
+                .FirstOrDefaultAsync(p => p.PostId == id, cancellationToken);
         }
     }
 }

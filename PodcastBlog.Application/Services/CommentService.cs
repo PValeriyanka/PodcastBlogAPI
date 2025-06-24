@@ -1,7 +1,8 @@
 ﻿using AutoMapper;
-using PodcastBlog.Application.IServices;
-using PodcastBlog.Application.ModelsDTO;
-using PodcastBlog.Domain.IRepositories;
+using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Application.Interfaces.Strategies;
+using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 
@@ -9,48 +10,75 @@ namespace PodcastBlog.Application.Services
 {
     public class CommentService : ICommentService
     {
-        private readonly ICommentRepository _commentRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly INotificationService _notificationService;
+        private readonly ICommentCleanupStrategy _cleanup;
         private readonly IMapper _mapper;
 
-        public CommentService(ICommentRepository commentRepository, IMapper mapper)
+        public CommentService(IUnitOfWork unitOfWork, INotificationService notificationService, ICommentCleanupStrategy cleanup, IMapper mapper)
         {
-            _commentRepository = commentRepository;
+            _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
+            _cleanup = cleanup;
             _mapper = mapper;
         }
 
-        public async Task<PagedList<CommentDTO>> GetCommentsByPostPaged(int postId, Parameters parameters, CancellationToken cancellationToken)
+        public async Task<PagedList<CommentDto>> GetCommentsByPostPagedAsync(int postId, Parameters parameters, CancellationToken cancellationToken)
         {
-            var comments = await _commentRepository.GetCommentsByPostPaged(postId, parameters, cancellationToken);
-            var commentsDTO = _mapper.Map<IEnumerable<CommentDTO>>(comments).ToList();
+            var comments = await _unitOfWork.Comments.GetCommentsByPostPagedAsync(postId, parameters, cancellationToken);
 
-            return new PagedList<CommentDTO>(commentsDTO, comments.MetaData.TotalCount, comments.MetaData.CurrentPage, comments.MetaData.PageSize);
+            var commentsDto = _mapper.Map<IEnumerable<CommentDto>>(comments).ToList();
+
+            return new PagedList<CommentDto>(commentsDto, comments.MetaData.TotalCount, comments.MetaData.CurrentPage, comments.MetaData.PageSize);
         }
 
-        public async Task<CommentDTO> GetCommentById(int id, CancellationToken cancellationToken)
+        public async Task<CommentDto> GetCommentByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var comment = await _commentRepository.GetCommentById(id, cancellationToken);
-            var commentDTO = _mapper.Map<CommentDTO>(comment);
+            var comment = await _unitOfWork.Comments.GetByIdAsync(id, cancellationToken);
 
-            return commentDTO;
+            var commentDto = _mapper.Map<CommentDto>(comment);
+
+            return commentDto;
         }
 
-        public async Task CreateComment(CommentDTO commentDTO, CancellationToken cancellationToken)
+        public async Task CreateCommentAsync(CommentDto commentDto, int? parentId, CancellationToken cancellationToken)
         {
-            var comment = _mapper.Map<Comment>(commentDTO);
+            if (parentId is not null) 
+            { 
+                commentDto.ParentId = parentId;
+            }
 
-            await _commentRepository.CreateComment(comment, cancellationToken);
+            var comment = _mapper.Map<Comment>(commentDto);
+            comment.Status = CommentStatus.Pending;
+
+            await _unitOfWork.Comments.CreateAsync(comment, cancellationToken);
+
+            var post = await _unitOfWork.Posts.GetByIdAsync(comment.PostId, cancellationToken);
+
+            await _notificationService.NewCommentNotificationAsync(comment, post, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdateComment(CommentDTO commentDTO, CancellationToken cancellationToken)
+        public async Task PublishCommentAsync(int id, CancellationToken cancellationToken)
         {
-            var comment = _mapper.Map<Comment>(commentDTO);
+            var comment = await _unitOfWork.Comments.GetByIdAsync(id, cancellationToken);
+            
+            comment.Status = CommentStatus.Approved;
+            comment.CreatedAt = DateTime.UtcNow;
 
-            await _commentRepository.UpdateComment(comment, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeleteComment(int id, CancellationToken cancellationToken)
+        public async Task DeleteCommentAsync(int id, CancellationToken cancellationToken)
         {
-            await _commentRepository.DeleteComment(id, cancellationToken);
+            var comment = await _unitOfWork.Comments.GetByIdAsync(id, cancellationToken);
+
+            await _cleanup.CleanupAsync(comment, cancellationToken);
+
+            await _unitOfWork.Comments.DeleteAsync(comment, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }

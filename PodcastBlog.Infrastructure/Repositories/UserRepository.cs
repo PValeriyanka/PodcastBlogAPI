@@ -1,40 +1,38 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PodcastBlog.Domain.IRepositories;
+using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
+using PodcastBlog.Domain.Parameters;
 
 namespace PodcastBlog.Infrastructure.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : Repository<User>, IUserRepository
     {
-        private readonly PodcastBlogContext _context;
+        public UserRepository(PodcastBlogContext context) : base(context) { }
 
-        public UserRepository(PodcastBlogContext context)
+        public async Task<PagedList<User>> GetAllUsersPagedAsync(Parameters parameters, CancellationToken cancellationToken)
         {
-            _context = context;
+            var usersQuery = _context.Users.OrderBy(u => u.Name).AsQueryable();
+
+            var count = await usersQuery.CountAsync(cancellationToken);
+
+            var users = await usersQuery
+                .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+                .Take(parameters.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PagedList<User>(users, count, parameters.PageNumber, parameters.PageSize);
         }
 
-        public async Task<User> GetUserById(int id, CancellationToken cancellationToken)
+        public override async Task<User?> GetByIdAsync(int id, CancellationToken cancellationToken)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-        }
-
-        public async Task CreateUser(User user, CancellationToken cancellationToken)
-        {
-            await _context.Users.AddAsync(user, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task UpdateUser(User user, CancellationToken cancellationToken)
-        {
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        public async Task DeleteUser(int id, CancellationToken cancellationToken)
-        {
-            var user = await GetUserById(id, cancellationToken);
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync(cancellationToken);
+            return await _context.Users
+                .Include(u => u.Posts)
+                    .ThenInclude(p => p.Tags)
+                .Include(u => u.Comments)
+                .Include(u => u.Subscriptions)
+                .Include(u => u.Followers)
+                    .ThenInclude(f => f.Subscriber)
+                .Include(u => u.Liked).FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         }
     }
 }

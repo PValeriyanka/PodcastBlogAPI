@@ -1,18 +1,14 @@
 ﻿using PodcastBlog.Domain.Models;
-using System.ComponentModel.DataAnnotations;
 
-namespace PodcastBlog.Application.ModelsDTO
+namespace PodcastBlog.Application.ModelsDto
 {
-    public class UserDTO
+    public class UserDto
     {
-        public int UserId { get; set; }
-        [Required]
-        public string UserName { get; set; }
-        [Required]
-        public string Name { get; set; }
-        [Required]
-        public string PasswordHash { get; set; }
+        public int UserId { get; set; }    
+        required public string UserName { get; set; }
+        required public string Name { get; set; }
+        required public string PasswordHash { get; set; }
         public UserRole Role { get; set; }
-        public bool NotifyNewEpisodes { get; set; }
+        public bool EmailNotify { get; set; }
     }
 }

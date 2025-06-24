@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PodcastBlog.Application.IServices;
-using PodcastBlog.Application.ModelsDTO;
+using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Application.ModelsDto;
 
 namespace PodcastBlog.Presentation.Controllers
 {
@@ -17,38 +17,48 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/podcasts/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<PodcastDTO>> GetPodcastById(int id, CancellationToken cancellationToken)
+        public async Task<ActionResult<PodcastDto>> GetPodcastByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var podcastDTO = await _podcastService.GetPodcastById(id, cancellationToken);
+            var podcastDto = await _podcastService.GetPodcastByIdAsync(id, cancellationToken);
 
-            return Ok(podcastDTO);
+            return Ok(podcastDto);
         }
 
         // POST: api/podcasts
         [HttpPost]
-        public async Task<ActionResult<PodcastDTO>> CreatePodcast([FromBody] PodcastDTO podcastDTO, CancellationToken cancellationToken)
+        public async Task<ActionResult<PodcastDto>> CreatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
         {
-            await _podcastService.CreatePodcast(podcastDTO, cancellationToken);
+            await _podcastService.CreatePodcastAsync(podcastDto, cancellationToken);
 
-            return CreatedAtAction(nameof(GetPodcastById), new { id = podcastDTO.PodcastId }, podcastDTO);
+            return CreatedAtAction(nameof(GetPodcastByIdAsync), new { id = podcastDto.PodcastId }, podcastDto);
         }
 
         // PUT: api/podcasts/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdatePodcast([FromBody] PodcastDTO podcastDTO, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
         {
-            await _podcastService.UpdatePodcast(podcastDTO, cancellationToken);
+            await _podcastService.UpdatePodcastAsync(podcastDto, cancellationToken);
 
             return NoContent();
         }
 
         // DELETE: api/podcasts/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePodcast(int id, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeletePodcastAsync(int id, CancellationToken cancellationToken)
         {
-            await _podcastService.DeletePodcast(id, cancellationToken);
+            await _podcastService.DeletePodcastAsync(id, cancellationToken);
 
             return NoContent();
         }
+
+        // POST: api/podcasts/{id}/listen
+        [HttpPost("{id}/listen")]
+        public async Task<IActionResult> IncrementListeningAsync(int id, CancellationToken cancellationToken)
+        {
+            await _podcastService.ListeningAsync(id, cancellationToken);
+
+            return NoContent();
+        }
+
     }
 }

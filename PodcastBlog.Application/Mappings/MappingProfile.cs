@@ -1,6 +1,6 @@
 ﻿using AutoMapper;
 using PodcastBlog.Domain.Models;
-using PodcastBlog.Application.ModelsDTO;
+using PodcastBlog.Application.ModelsDto;
 
 namespace PodcastBlog.Application.Mappings
 {
@@ -8,19 +8,26 @@ namespace PodcastBlog.Application.Mappings
     {
         public MappingProfile()
         {
-            CreateMap<Comment, CommentDTO>()
+            CreateMap<Comment, CommentDto>()
                 .ReverseMap();
 
-            CreateMap<Podcast, PodcastDTO>()
+            CreateMap<Notification, NotificationDto>()
                 .ReverseMap();
 
-            CreateMap<Post, PostDTO>()
+            CreateMap<Podcast, PodcastDto>()
                 .ReverseMap();
 
-            CreateMap<Tag, TagDTO>()
+            CreateMap<Post, PostDto>()
+                .ForMember(dest => dest.Tags,
+                    opt => opt.MapFrom(src =>
+                        string.Join(" ", src.Tags.Select(t => $"#{t.Name}"))))
+                .ReverseMap()
+                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+
+            CreateMap<Tag, TagDto>()
                 .ReverseMap();
 
-            CreateMap<User, UserDTO>()
+            CreateMap<User, UserDto>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
                 .ReverseMap()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore());

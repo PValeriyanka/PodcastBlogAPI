@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace PodcastBlog.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialData : Migration
+    public partial class InitialSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,9 +34,9 @@ namespace PodcastBlog.Infrastructure.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    NotifyNewEpisodes = table.Column<bool>(type: "bit", nullable: false),
+                    EmailNotify = table.Column<bool>(type: "bit", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -65,10 +65,10 @@ namespace PodcastBlog.Infrastructure.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     AudioFile = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Transcript = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CoverImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Duration = table.Column<int>(type: "int", nullable: false),
-                    EpisodeNumber = table.Column<int>(type: "int", nullable: false),
+                    Duration = table.Column<int>(type: "int", nullable: true),
+                    Bitrate = table.Column<int>(type: "int", nullable: true),
+                    Transcript = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ListenCount = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
@@ -196,6 +196,27 @@ namespace PodcastBlog.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    NotificationId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.NotificationId);
+                    table.ForeignKey(
+                        name: "FK_Notifications_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "UserSubscriptions",
                 columns: table => new
                 {
@@ -209,14 +230,12 @@ namespace PodcastBlog.Infrastructure.Migrations
                         name: "FK_UserSubscriptions_AspNetUsers_AuthorId",
                         column: x => x.AuthorId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_UserSubscriptions_AspNetUsers_SubscriberId",
                         column: x => x.SubscriberId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -231,10 +250,7 @@ namespace PodcastBlog.Infrastructure.Migrations
                     PublishedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     PodcastId = table.Column<int>(type: "int", nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
-                    Views = table.Column<int>(type: "int", nullable: false),
-                    Likes = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<int>(type: "int", nullable: true),
-                    UserId1 = table.Column<int>(type: "int", nullable: true)
+                    Views = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -246,21 +262,10 @@ namespace PodcastBlog.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Posts_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Posts_AspNetUsers_UserId1",
-                        column: x => x.UserId1,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_Posts_Podcasts_PodcastId",
                         column: x => x.PodcastId,
                         principalTable: "Podcasts",
-                        principalColumn: "PodcastId",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "PodcastId");
                 });
 
             migrationBuilder.CreateTable(
@@ -273,8 +278,8 @@ namespace PodcastBlog.Infrastructure.Migrations
                     UserId = table.Column<int>(type: "int", nullable: false),
                     ParentId = table.Column<int>(type: "int", nullable: true),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -289,14 +294,12 @@ namespace PodcastBlog.Infrastructure.Migrations
                         name: "FK_Comments_Comments_ParentId",
                         column: x => x.ParentId,
                         principalTable: "Comments",
-                        principalColumn: "CommentId",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "CommentId");
                     table.ForeignKey(
                         name: "FK_Comments_Posts_PostId",
                         column: x => x.PostId,
                         principalTable: "Posts",
-                        principalColumn: "PostId",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "PostId");
                 });
 
             migrationBuilder.CreateTable(
@@ -323,22 +326,44 @@ namespace PodcastBlog.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserPostLikes",
+                columns: table => new
+                {
+                    LikedPostId = table.Column<int>(type: "int", nullable: false),
+                    LikesId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserPostLikes", x => new { x.LikedPostId, x.LikesId });
+                    table.ForeignKey(
+                        name: "FK_UserPostLikes_AspNetUsers_LikesId",
+                        column: x => x.LikesId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_UserPostLikes_Posts_LikedPostId",
+                        column: x => x.LikedPostId,
+                        principalTable: "Posts",
+                        principalColumn: "PostId");
+                });
+
             migrationBuilder.InsertData(
                 table: "AspNetUsers",
-                columns: new[] { "Id", "AccessFailedCount", "ConcurrencyStamp", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "Name", "NormalizedEmail", "NormalizedUserName", "NotifyNewEpisodes", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "Role", "SecurityStamp", "TwoFactorEnabled", "UserName" },
+                columns: new[] { "Id", "AccessFailedCount", "ConcurrencyStamp", "Email", "EmailConfirmed", "EmailNotify", "LockoutEnabled", "LockoutEnd", "Name", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "Role", "SecurityStamp", "TwoFactorEnabled", "UserName" },
                 values: new object[,]
                 {
-                    { 1, 0, "4028e7ba-265d-428d-8e1f-0ebf3b4e1f9c", "admin@blog.com", false, false, null, "admin", null, null, false, "AQAAAAIAAYagAAAAEIpS3XBFlRNzEkgSJhWvWcaXmCJKirIEjTynLndicwmUE1HONni+rc/D5d9MwS0cCA==", null, false, "Administrator", null, false, "admin" },
-                    { 2, 0, "725fd62d-7ee2-4886-83e9-de622cd78865", "author_1@blog.com", false, false, null, "Author #1", null, null, false, "AQAAAAIAAYagAAAAELupRcBOs3+LADOuNRbwGZlO2V5LFYyMPpPD+gQVnZ7Hwmjb8mpYTDVfAlFrfNdQ7A==", null, false, "Author", null, false, "author_1" }
+                    { 1, 0, "b534df78-a22f-497f-a2ba-2814372beed2", "lera.pinchukova@gmail.com", false, true, false, null, "admin", null, null, "AQAAAAIAAYagAAAAEA+DJPlAU7dZf8Ee1xsbhb0XSmH2n8VzG/qMt+Vx2J6+Y3ZYKmqOop5ETSv2RFRPtQ==", null, false, "Administrator", null, false, "admin" },
+                    { 2, 0, "272774b1-201d-4894-88f9-0e5b7bf2aac8", "author_1@blog.com", false, true, false, null, "Author #1", null, null, "AQAAAAIAAYagAAAAEAYAj21f1RUOjjS7H0RPiGKm6HQw+aHbj3H2jfVwn1TkPeZYmmYGpP6rNnVxyerk9w==", null, false, "Author", null, false, "author_1" }
                 });
 
             migrationBuilder.InsertData(
                 table: "Podcasts",
-                columns: new[] { "PodcastId", "AudioFile", "CoverImage", "Duration", "EpisodeNumber", "ListenCount", "Title", "Transcript" },
+                columns: new[] { "PodcastId", "AudioFile", "Bitrate", "CoverImage", "Duration", "ListenCount", "Title", "Transcript" },
                 values: new object[,]
                 {
-                    { 1, "podcast_1.mp3", null, 30, 1, 0, "Podcast #1", null },
-                    { 2, "podcast_2.mp3", null, 45, 2, 0, "Podcast #2", null }
+                    { 1, "/audio/fake1.mp3", null, null, 180, 0, "Podcast #1", "Это фиктивная транскрипция." },
+                    { 2, "/audio/fake2.wav", null, null, 240, 0, "Podcast #2", "Тут могла бы быть ваша реклама." }
                 });
 
             migrationBuilder.InsertData(
@@ -352,11 +377,12 @@ namespace PodcastBlog.Infrastructure.Migrations
 
             migrationBuilder.InsertData(
                 table: "Posts",
-                columns: new[] { "PostId", "AuthorId", "Content", "Likes", "PodcastId", "PublishedAt", "Status", "Title", "UserId", "UserId1", "Views" },
+                columns: new[] { "PostId", "AuthorId", "Content", "PodcastId", "PublishedAt", "Status", "Title", "Views" },
                 values: new object[,]
                 {
-                    { 1, 2, "The first Post", 0, 1, new DateTime(2024, 10, 1, 13, 30, 0, 0, DateTimeKind.Unspecified), 4, "Post #1", null, null, 0 },
-                    { 2, 2, "The second Post", 0, 2, new DateTime(2024, 12, 11, 14, 30, 0, 0, DateTimeKind.Unspecified), 4, "Post #2", null, null, 0 }
+                    { 1, 2, "The first Post", 1, new DateTime(2024, 10, 1, 13, 30, 0, 0, DateTimeKind.Unspecified), 1, "Post #1", 0 },
+                    { 2, 2, "The second Post", 2, new DateTime(2024, 11, 5, 14, 30, 0, 0, DateTimeKind.Unspecified), 0, "Post #2", 0 },
+                    { 3, 2, "The third Post", null, new DateTime(2025, 12, 11, 17, 35, 0, 0, DateTimeKind.Unspecified), 1, "Post #3", 0 }
                 });
 
             migrationBuilder.InsertData(
@@ -365,7 +391,8 @@ namespace PodcastBlog.Infrastructure.Migrations
                 values: new object[,]
                 {
                     { 1, "Comment #1", new DateTime(2024, 11, 12, 10, 45, 0, 0, DateTimeKind.Unspecified), null, 1, 1, 2 },
-                    { 2, "Comment #2", new DateTime(2025, 1, 5, 17, 5, 0, 0, DateTimeKind.Unspecified), null, 1, 1, 1 }
+                    { 2, "Comment #2", new DateTime(2025, 1, 5, 17, 5, 0, 0, DateTimeKind.Unspecified), null, 1, 1, 1 },
+                    { 3, "Comment #3", new DateTime(2025, 1, 5, 17, 5, 0, 0, DateTimeKind.Unspecified), 2, 1, 1, 2 }
                 });
 
             migrationBuilder.CreateIndex(
@@ -423,6 +450,11 @@ namespace PodcastBlog.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Notifications_UserId",
+                table: "Notifications",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Posts_AuthorId",
                 table: "Posts",
                 column: "AuthorId");
@@ -430,17 +462,9 @@ namespace PodcastBlog.Infrastructure.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Posts_PodcastId",
                 table: "Posts",
-                column: "PodcastId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Posts_UserId",
-                table: "Posts",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Posts_UserId1",
-                table: "Posts",
-                column: "UserId1");
+                column: "PodcastId",
+                unique: true,
+                filter: "[PodcastId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PostTag_TagsTagId",
@@ -452,6 +476,11 @@ namespace PodcastBlog.Infrastructure.Migrations
                 table: "Tags",
                 column: "Name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserPostLikes_LikesId",
+                table: "UserPostLikes",
+                column: "LikesId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserSubscriptions_AuthorId",
@@ -481,7 +510,13 @@ namespace PodcastBlog.Infrastructure.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
+                name: "Notifications");
+
+            migrationBuilder.DropTable(
                 name: "PostTag");
+
+            migrationBuilder.DropTable(
+                name: "UserPostLikes");
 
             migrationBuilder.DropTable(
                 name: "UserSubscriptions");
@@ -490,10 +525,10 @@ namespace PodcastBlog.Infrastructure.Migrations
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Posts");
+                name: "Tags");
 
             migrationBuilder.DropTable(
-                name: "Tags");
+                name: "Posts");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

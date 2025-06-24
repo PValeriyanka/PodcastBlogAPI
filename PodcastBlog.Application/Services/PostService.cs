@@ -1,57 +1,137 @@
 ﻿using AutoMapper;
-using PodcastBlog.Application.IServices;
-using PodcastBlog.Application.ModelsDTO;
-using PodcastBlog.Domain.IRepositories;
+using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Application.Interfaces.Strategies;
+using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using PodcastBlog.Domain.Parameters.ModelParameters;
+using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services
 {
     public class PostService : IPostService
     {
-        private readonly IPostRepository _postRepository;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ITagService _tagService;
+        private readonly INotificationService _notificationService;
+        private readonly IPostCleanupStrategy _cleanup;
         private readonly IMapper _mapper;
 
-        public PostService(IPostRepository postRepository, IMapper mapper)
+        public PostService(IUnitOfWork unitOfWork, ITagService tagService, INotificationService notificationService, IPostCleanupStrategy cleanup, IMapper mapper)
         {
-            _postRepository = postRepository;
+            _unitOfWork = unitOfWork;
+            _tagService = tagService;
+            _notificationService = notificationService;
+            _cleanup = cleanup;
             _mapper = mapper;
         }
 
-        public async Task<PagedList<PostDTO>> GetAllPostsPaged(PostParameters parameters, CancellationToken cancellationToken)
+        public async Task<PagedList<PostDto>> GetPostsPagedAsync(PostParameters parameters, ClaimsPrincipal userPrincipal, string? type, CancellationToken cancellationToken)
         {
-            var posts = await _postRepository.GetAllPostsPaged(parameters, cancellationToken);
-            var postsDTO = _mapper.Map<IEnumerable<PostDTO>>(posts).ToList();
+            var now = DateTime.UtcNow;
 
-            return new PagedList<PostDTO>(postsDTO, posts.MetaData.TotalCount, posts.MetaData.CurrentPage, posts.MetaData.PageSize);
+            var sheduledPosts = await _unitOfWork.Posts.GetSheduledPostsAsync(cancellationToken);
+
+            foreach (var post in sheduledPosts)
+            {
+                post.Status = PostStatus.Published;
+
+                await _notificationService.CreatePostNotificationAsync(post.AuthorId, cancellationToken);
+            }
+
+            //var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+            int.TryParse(userPrincipal.FindFirstValue("sub"), out int Id); // "nameid"? / !
+
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(Id, cancellationToken);
+
+            var posts = await _unitOfWork.Posts.GetPostsPagedAsync(parameters, currentUser, type, cancellationToken);
+
+            var postsDto = _mapper.Map<IEnumerable<PostDto>>(posts).ToList();
+
+            return new PagedList<PostDto>(postsDto, posts.MetaData.TotalCount, posts.MetaData.CurrentPage, posts.MetaData.PageSize);
         }
 
-        public async Task<PostDTO> GetPostById(int id, CancellationToken cancellationToken)
+        public async Task<PostDto> GetPostByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var post = await _postRepository.GetPostById(id, cancellationToken);
-            var postDTO = _mapper.Map<PostDTO>(post);
+            var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
 
-            return postDTO;
+            post.Views += 1;
+
+            var postDto = _mapper.Map<PostDto>(post);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return postDto;
         }
 
-        public async Task CreatePost(PostDTO postDTO, CancellationToken cancellationToken)
+        public async Task CreatePostAsync(PostDto postDto, ClaimsPrincipal userPrincipal, string status, CancellationToken cancellationToken)
         {
-            var post = _mapper.Map<Post>(postDTO);
+            int.TryParse(userPrincipal.FindFirstValue("sub"), out int authorId); // !
+            authorId = 2;
+            postDto.AuthorId = authorId;
 
-            await _postRepository.CreatePost(post, cancellationToken);
+            await ApplyStatus(postDto, status, userPrincipal, cancellationToken);
+
+            var post = _mapper.Map<Post>(postDto);
+
+            post.Tags = await _tagService.ResolveTagsFromStringAsync(postDto.Tags, cancellationToken);
+
+            await _unitOfWork.Posts.CreateAsync(post, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdatePost(PostDTO postDTO, CancellationToken cancellationToken)
+        public async Task UpdatePostAsync(PostDto postDto, ClaimsPrincipal userPrincipal, string? status, CancellationToken cancellationToken)
         {
-            var post = _mapper.Map<Post>(postDTO);
+            if (status is not null)
+            {
+                await ApplyStatus(postDto, status, userPrincipal, cancellationToken);
+            }
 
-            await _postRepository.UpdatePost(post, cancellationToken);
+            var post = await _unitOfWork.Posts.GetByIdAsync(postDto.PostId, cancellationToken);
+
+            _mapper.Map(postDto, post);
+
+            post.Tags = await _tagService.ResolveTagsFromStringAsync(postDto.Tags, cancellationToken);
+
+            await _unitOfWork.Posts.UpdateAsync(post, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeletePost(int id, CancellationToken cancellationToken)
+        public async Task DeletePostAsync(int id, CancellationToken cancellationToken)
         {
-            await _postRepository.DeletePost(id, cancellationToken);
+            var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
+
+            await _cleanup.CleanupAsync(post, cancellationToken);
+
+            await _unitOfWork.Posts.DeleteAsync(post, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task ApplyStatus(PostDto postDto, string status, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
+        {
+            if ((postDto.PublishedAt == default || postDto.PublishedAt <= DateTime.UtcNow) && status == "Publish")
+            {
+                postDto.PublishedAt = DateTime.UtcNow;
+                postDto.Status = PostStatus.Published;
+
+                int.TryParse(userPrincipal.FindFirstValue("sub"), out int userId); // !
+
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+                
+                await _notificationService.CreatePostNotificationAsync(2, cancellationToken);
+            }
+            else if (postDto.PublishedAt > DateTime.UtcNow && status == "Publish")
+            {
+                postDto.Status = PostStatus.Scheduled;
+            }
+            else
+            {
+                postDto.Status = PostStatus.Draft;
+            }
         }
     }
 }
