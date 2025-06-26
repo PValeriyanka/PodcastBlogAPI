@@ -1,5 +1,8 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.Mappings;
@@ -9,7 +12,9 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Infrastructure;
+using PodcastBlog.Infrastructure.Authentication;
 using PodcastBlog.Infrastructure.Repositories;
+using System.Text;
 
 namespace PodcastBlog.Server
 {
@@ -21,7 +26,7 @@ namespace PodcastBlog.Server
 
             string? connectionString = builder.Configuration.GetConnectionString("RemoteConnection");
             builder.Services.AddDbContext<PodcastBlogContext>(options => options.UseSqlServer(connectionString));
-            
+
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             builder.Services.AddScoped<ICommentRepository, CommentRepository>();
@@ -52,15 +57,84 @@ namespace PodcastBlog.Server
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IUserCleanupStrategy, UserCleanupStrategy>();
 
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                     .AddEntityFrameworkStores<PodcastBlogContext>()
                     .AddDefaultTokenProviders();
 
-            builder.Services.AddSwaggerGen();
+            builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+
+            builder.Services.Configure<IdentityOptions>(options =>
+            {
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequiredLength = 6;
+            });
+
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "PodcastBlog API", Version = "v1" });
+
+                var jwtSecurityScheme = new OpenApiSecurityScheme
+                {
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.Http,
+                    Description = "¬ведите токен в формате: Bearer {token}",
+                    Reference = new OpenApiReference
+                    {
+                        Id = "Bearer",
+                        Type = ReferenceType.SecurityScheme
+                    }
+                };
+
+                c.AddSecurityDefinition("Bearer", jwtSecurityScheme);
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        jwtSecurityScheme,
+                        Array.Empty<string>()
+                    }
+                });
+            });
+
 
             builder.Services.AddControllers();
 
             builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("AdminOnly", policy =>
+                    policy.RequireRole("Administrator"));
+            });
+
+            var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtOptions.Audience,
+                    ValidateLifetime = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
+                    ValidateIssuerSigningKey = true
+                };
+            });
 
             var app = builder.Build();
 
@@ -76,9 +150,14 @@ namespace PodcastBlog.Server
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.MapControllerRoute(
-                name: "default",
-                pattern: "{controller=Post}/{action=Index}/{id?}");
+            if (!app.Environment.IsDevelopment())
+            {
+                app.MapGet("/", context =>
+                {
+                    context.Response.Redirect("/api/posts");
+                    return Task.CompletedTask;
+                });
+            }
 
             app.MapControllers();
 

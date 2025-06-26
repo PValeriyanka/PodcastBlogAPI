@@ -26,7 +26,7 @@ namespace PodcastBlog.Application.Services
 
         public async Task<PagedList<NotificationDto>> GetNotificationsByUserPagedAsync(ClaimsPrincipal userPrincipal, Parameters parameters, CancellationToken cancellationToken)
         {
-            int.TryParse(userPrincipal.FindFirstValue("sub"), out int userId); // !
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
             var notifications = await _unitOfWork.Notifications.GetNotificationsByUserPagedAsync(userId, parameters, cancellationToken);
 

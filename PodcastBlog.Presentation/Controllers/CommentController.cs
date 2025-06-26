@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto;
 using PodcastBlog.Domain.Parameters;
@@ -19,6 +20,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/comments
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<CommentDto>>> GetCommentsByPostPagedAsync(int postId, [FromQuery] Parameters parameters, CancellationToken cancellationToken)
         {
             var commentsDto = await _commentService.GetCommentsByPostPagedAsync(postId, parameters, cancellationToken);
@@ -30,6 +32,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/comments/{id}
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<CommentDto>> GetCommentByIdAsync(int id, CancellationToken cancellationToken)
         {
             var commentDto = await _commentService.GetCommentByIdAsync(id, cancellationToken);
@@ -39,6 +42,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/comments
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<CommentDto>> CreateCommentAsync([FromBody] CommentDto commentDto, int? parentId, CancellationToken cancellationToken)
         {
             await _commentService.CreateCommentAsync(commentDto, parentId, cancellationToken);
@@ -48,6 +52,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/comments/publish/{id}
         [HttpPut("publish/{id}")]
+        [Authorize]
         public async Task<IActionResult> PublishCommentAsync(int id, CancellationToken cancellationToken)
         {
             await _commentService.PublishCommentAsync(id, cancellationToken);
@@ -57,6 +62,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // DELETE: api/comments/{id}
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteCommentAsync(int id, CancellationToken cancellationToken)
         {
             await _commentService.DeleteCommentAsync(id, cancellationToken);

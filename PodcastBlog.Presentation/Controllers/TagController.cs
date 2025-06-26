@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto;
 using PodcastBlog.Domain.Parameters;
@@ -19,6 +20,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/tags
         [HttpGet]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<IEnumerable<TagDto>>> GetAllTagsPagedAsync([FromQuery] Parameters parameters, CancellationToken cancellationToken)
         {
             var tagsDto = await _tagService.GetAllTagsPagedAsync(parameters, cancellationToken);
@@ -30,6 +32,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/tags/{id}
         [HttpGet("{id}")]
+        [Authorize]
         public async Task<ActionResult<TagDto>> GetTagByIdAsync(int id, CancellationToken cancellationToken)
         {
             var tagDto = await _tagService.GetTagByIdAsync(id, cancellationToken);
@@ -39,6 +42,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/tags
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<TagDto>> CreateTagAsync([FromBody] TagDto tagDto, CancellationToken cancellationToken)
         {
             await _tagService.CreateTagAsync(tagDto, cancellationToken);
@@ -48,6 +52,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/tags/{id}
         [HttpPut("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> UpdateTagAsync([FromBody] TagDto tagDto, CancellationToken cancellationToken)
         {
             await _tagService.UpdateTagAsync(tagDto, cancellationToken);
@@ -57,6 +62,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // DELETE: api/tags/{id}
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> DeleteTagAsync(int id, CancellationToken cancellationToken)
         {
             await _tagService.DeleteTagAsync(id, cancellationToken);

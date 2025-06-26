@@ -8,11 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="14.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.6" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PodcastBlog.Domain\PodcastBlog.Domain.csproj" />
+    <ProjectReference Include="..\PodcastBlog.Infrastructure\PodcastBlog.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

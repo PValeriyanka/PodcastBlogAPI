@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto;
 using PodcastBlog.Domain.Parameters;
@@ -19,6 +20,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/users
         [HttpGet]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsersPagedAsync([FromQuery] Parameters parameters, CancellationToken cancellationToken)
         {
             var usersDto = await _userService.GetAllUsersPagedAsync(parameters, cancellationToken);
@@ -30,6 +32,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/users/{id}
         [HttpGet("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<ActionResult<UserDto>> GetUserByIdAsync(int id, CancellationToken cancellationToken)
         {
             var userDto = await _userService.GetUserByIdAsync(id, cancellationToken);
@@ -37,26 +40,9 @@ namespace PodcastBlog.Presentation.Controllers
             return Ok(userDto);
         }
 
-        // POST: api/users
-        [HttpPost]
-        public async Task<ActionResult<UserDto>> CreateUserAsync([FromBody] UserDto userDto, CancellationToken cancellationToken)
-        {
-            await _userService.CreateUserAsync(userDto, cancellationToken);
-
-            return CreatedAtAction(nameof(GetUserByIdAsync), new { id = userDto.UserId }, userDto);
-        }
-
-        // PUT: api/users/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUserAsync([FromBody] UserDto userDto, CancellationToken cancellationToken)
-        {
-            await _userService.UpdateUserAsync(userDto, cancellationToken);
-
-            return NoContent();
-        }
-
         // DELETE: api/users/{id}
         [HttpDelete("{id}")]
+        [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> DeleteUserAsync(int id, CancellationToken cancellationToken)
         {
             await _userService.DeleteUserAsync(id, cancellationToken);
@@ -66,6 +52,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/users/{id}/subscription
         [HttpPost("{authorId}/subscription")]
+        [Authorize]
         public async Task<IActionResult> SubscriptionAsync(int authorId, CancellationToken cancellationToken)
         {
             await _userService.SubscriptionAsync(User, authorId, cancellationToken);

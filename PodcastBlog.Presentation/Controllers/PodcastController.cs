@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto;
 
@@ -26,6 +27,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/podcasts
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<PodcastDto>> CreatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
         {
             await _podcastService.CreatePodcastAsync(podcastDto, cancellationToken);
@@ -35,6 +37,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/podcasts/{id}
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
         {
             await _podcastService.UpdatePodcastAsync(podcastDto, cancellationToken);
@@ -44,6 +47,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // DELETE: api/podcasts/{id}
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeletePodcastAsync(int id, CancellationToken cancellationToken)
         {
             await _podcastService.DeletePodcastAsync(id, cancellationToken);

@@ -75,9 +75,8 @@ namespace PodcastBlog.Application.Services
 
         public async Task SubscriptionAsync(ClaimsPrincipal userPrincipal, int authorId, CancellationToken cancellationToken)
         {
-            int.TryParse(userPrincipal.FindFirstValue("sub"), out int subscriberId);  // !
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int subscriberId);
 
-            subscriberId = 1;
             if (subscriberId != authorId)
             {
                 var subscriber = await _unitOfWork.Users.GetByIdAsync(subscriberId, cancellationToken);
@@ -116,7 +115,7 @@ namespace PodcastBlog.Application.Services
 
         public async Task PostLikeAsync(ClaimsPrincipal userPrincipal, int postId, CancellationToken cancellationToken)
         {
-            int.TryParse(userPrincipal.FindFirstValue("sub"), out int userId);  // !
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
             var post = await _unitOfWork.Posts.GetByIdAsync(postId, cancellationToken);

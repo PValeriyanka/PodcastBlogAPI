@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto;
 using PodcastBlog.Domain.Parameters.ModelParameters;
@@ -32,6 +33,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/posts/recommends
         [HttpGet("recommends")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PostDto>>> GetRecommendsPostsPagedAsync([FromQuery] PostParameters parameters, CancellationToken cancellationToken)
         {
             var postsDto = await _postService.GetPostsPagedAsync(parameters, User, "Recommends", cancellationToken);
@@ -43,6 +45,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/posts/published
         [HttpGet("published")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PostDto>>> GetPublishedPostsPagedAsync([FromQuery] PostParameters parameters, CancellationToken cancellationToken)
         {
             var postsDto = await _postService.GetPostsPagedAsync(parameters, User, "Published", cancellationToken);
@@ -54,6 +57,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/posts/sheduled
         [HttpGet("sheduled")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PostDto>>> GetSheduledPostsPagedAsync([FromQuery] PostParameters parameters, CancellationToken cancellationToken)
         {
             var postsDto = await _postService.GetPostsPagedAsync(parameters, User, "Sheduled", cancellationToken);
@@ -65,6 +69,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/posts/draft
         [HttpGet("draft")]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<PostDto>>> GetDraftPostsPagedAsync([FromQuery] PostParameters parameters, CancellationToken cancellationToken)
         {
             var postsDto = await _postService.GetPostsPagedAsync(parameters, User, "Draft", cancellationToken);
@@ -85,6 +90,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/posts/publish
         [HttpPost("publish")]
+        [Authorize]
         public async Task<ActionResult<PostDto>> CreatePublicPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
         {
             await _postService.CreatePostAsync(postDto, User, "Publish", cancellationToken);
@@ -94,6 +100,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/posts/draft
         [HttpPost("draft")]
+        [Authorize]
         public async Task<ActionResult<PostDto>> CreateDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
         {
             await _postService.CreatePostAsync(postDto, User, "Draft", cancellationToken);
@@ -103,6 +110,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/posts/{id}
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdatePublicPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
         {
             await _postService.UpdatePostAsync(postDto, User, null, cancellationToken);
@@ -112,6 +120,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/posts/draft/{id}
         [HttpPut("draft/{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
         {
             await _postService.UpdatePostAsync(postDto, User, "Draft", cancellationToken);
@@ -121,6 +130,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // PUT: api/posts/publish/{id}
         [HttpPut("publish/{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateAndPublicDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
         {
             await _postService.UpdatePostAsync(postDto, User,"Publish", cancellationToken);
@@ -130,6 +140,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // DELETE: api/posts/{id}
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeletePostAsync(int id, CancellationToken cancellationToken)
         {
             await _postService.DeletePostAsync(id, cancellationToken);
@@ -139,6 +150,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // POST: api/posts/{id}/like
         [HttpPost("{postId}/like")]
+        [Authorize]
         public async Task<IActionResult> PostLikeAsync(int postId, CancellationToken cancellationToken)
         {
             await _userService.PostLikeAsync(User, postId, cancellationToken);

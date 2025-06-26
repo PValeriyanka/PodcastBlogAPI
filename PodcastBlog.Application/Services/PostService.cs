@@ -40,8 +40,7 @@ namespace PodcastBlog.Application.Services
                 await _notificationService.CreatePostNotificationAsync(post.AuthorId, cancellationToken);
             }
 
-            //var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-            int.TryParse(userPrincipal.FindFirstValue("sub"), out int Id); // "nameid"? / !
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int Id);
 
             var currentUser = await _unitOfWork.Users.GetByIdAsync(Id, cancellationToken);
 
@@ -67,8 +66,8 @@ namespace PodcastBlog.Application.Services
 
         public async Task CreatePostAsync(PostDto postDto, ClaimsPrincipal userPrincipal, string status, CancellationToken cancellationToken)
         {
-            int.TryParse(userPrincipal.FindFirstValue("sub"), out int authorId); // !
-            authorId = 2;
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int authorId);
+            
             postDto.AuthorId = authorId;
 
             await ApplyStatus(postDto, status, userPrincipal, cancellationToken);
@@ -118,11 +117,11 @@ namespace PodcastBlog.Application.Services
                 postDto.PublishedAt = DateTime.UtcNow;
                 postDto.Status = PostStatus.Published;
 
-                int.TryParse(userPrincipal.FindFirstValue("sub"), out int userId); // !
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
                 var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
                 
-                await _notificationService.CreatePostNotificationAsync(2, cancellationToken);
+                await _notificationService.CreatePostNotificationAsync(user.Id, cancellationToken);
             }
             else if (postDto.PublishedAt > DateTime.UtcNow && status == "Publish")
             {
