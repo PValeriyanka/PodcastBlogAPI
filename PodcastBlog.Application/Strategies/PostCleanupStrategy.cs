@@ -2,6 +2,7 @@
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
+using System.Security.Claims;
 
 namespace PodcastBlog.Application.Strategies
 {
@@ -16,7 +17,7 @@ namespace PodcastBlog.Application.Strategies
             _commentService = commentService;
         }
 
-        public async Task CleanupAsync(Post post, CancellationToken cancellationToken)
+        public async Task CleanupAsync(Post post, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
             foreach (var tag in post.Tags.ToList())
             {
@@ -25,7 +26,7 @@ namespace PodcastBlog.Application.Strategies
 
             foreach (var comment in post.Comments.ToList())
             {
-                await _commentService.DeleteCommentAsync(comment.CommentId, cancellationToken);
+                await _commentService.DeleteCommentAsync(comment.CommentId, userPrincipal,cancellationToken);
             }
 
             foreach (var user in post.Likes.ToList())

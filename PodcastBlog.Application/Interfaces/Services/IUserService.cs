@@ -1,4 +1,4 @@
-﻿using PodcastBlog.Application.ModelsDto;
+﻿using PodcastBlog.Application.ModelsDto.User;
 using PodcastBlog.Domain.Parameters;
 using System.Security.Claims;
 
@@ -8,10 +8,10 @@ namespace PodcastBlog.Application.Interfaces.Services
     {
         Task<PagedList<UserDto>> GetAllUsersPagedAsync(Parameters parameters, CancellationToken cancellationToken);
         Task<UserDto> GetUserByIdAsync(int id, CancellationToken cancellationToken);
-        Task CreateUserAsync(UserDto userDto, CancellationToken cancellationToken);
-        Task UpdateUserAsync(UserDto userDto, CancellationToken cancellationToken);
-        Task DeleteUserAsync(int id, CancellationToken cancellationToken);
-        Task SubscriptionAsync(ClaimsPrincipal userPrincipal, int authorId, CancellationToken cancellationToken);
-        Task PostLikeAsync(ClaimsPrincipal userPrincipal, int postId, CancellationToken cancellationToken);
+        Task UpdateUserAsync(UpdateUserDto updateUserDto, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
+        Task UpdateUserRoleAsync(UpdateUserRoleDto updateUserRoleDto, CancellationToken cancellationToken);
+        Task DeleteUserAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
+        Task SubscriptionAsync(int authorId, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
+        Task PostLikeAsync(int postId, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
     }
 }

@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
+using Microsoft.Extensions.Logging;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Podcast;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
+using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services
 {
@@ -13,91 +15,185 @@ namespace PodcastBlog.Application.Services
         private readonly IMediaService _audioService;
         private readonly IPodcastCleanupStrategy _cleanup;
         private readonly IMapper _mapper;
+        private readonly ILogger<PodcastService> _logger;
 
-        public PodcastService(IUnitOfWork unitOfWork, IMediaService audioService, IPodcastCleanupStrategy cleanup, IMapper mapper)
+        public PodcastService(IUnitOfWork unitOfWork, IMediaService audioService, IPodcastCleanupStrategy cleanup, IMapper mapper, ILogger<PodcastService> logger)
         {
             _unitOfWork = unitOfWork;
             _audioService = audioService;
             _cleanup = cleanup;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<PodcastDto> GetPodcastByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
+            try
+            {
+                var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
 
-            var podcastDto = _mapper.Map<PodcastDto>(podcast);
+                var podcastDto = _mapper.Map<PodcastDto>(podcast);
 
-            return podcastDto;
+                _logger.LogInformation("Подкаст успешно загружен");
+                return podcastDto;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении подкаста");
+                throw;
+            }
         }
 
-        public async Task CreatePodcastAsync(PodcastDto podcastDto, CancellationToken cancellationToken)
+        public async Task CreatePodcastAsync(CreatePodcastDto createPodcastDto, CancellationToken cancellationToken)
         {
-            var podcast = _mapper.Map<Podcast>(podcastDto);
-
-            if (podcastDto.CoverImageUpload is not null)
+            try
             {
-                podcast.CoverImage = await _audioService.GetCoverImageAsync(podcastDto.CoverImageUpload, cancellationToken);
-            }
+                var podcast = _mapper.Map<Podcast>(createPodcastDto);
 
-            if (podcastDto.AudioUpload is not null)
+                if (createPodcastDto.CoverImageUpload is not null)
+                {
+                    podcast.CoverImage = await _audioService.GetCoverImageAsync(createPodcastDto.CoverImageUpload, cancellationToken);
+                }
+
+                if (createPodcastDto.AudioUpload is not null)
+                {
+                    var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(createPodcastDto.AudioUpload, cancellationToken);
+
+                    podcast.AudioFile = path;
+                    podcast.Duration = duration;
+                    podcast.Bitrate = bitrate;
+                    podcast.Transcript = transcript;
+                }
+
+                await _unitOfWork.Podcasts.CreateAsync(podcast, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Подкаст успешно создан");
+            }
+            catch (Exception ex)
             {
-                var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(podcastDto.AudioUpload, cancellationToken);
-
-                podcast.AudioFile = path;
-                podcast.Duration = duration;
-                podcast.ListenCount = 0;
-                podcast.Transcript = transcript;
+                _logger.LogError(ex, "Ошибка при создании подкаста");
+                throw;
             }
-
-            await _unitOfWork.Podcasts.CreateAsync(podcast, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdatePodcastAsync(PodcastDto podcastDto, CancellationToken cancellationToken)
+        public async Task UpdatePodcastAsync(UpdatePodcastDto updatePodcastDto, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(podcastDto.PodcastId, cancellationToken);
-
-            _mapper.Map(podcastDto, podcast);
-
-            if (podcastDto.CoverImageUpload is not null)
+            try
             {
-                podcast.CoverImage = await _audioService.GetCoverImageAsync(podcastDto.CoverImageUpload, cancellationToken);
-            }
+                var podcast = await _unitOfWork.Podcasts.GetByIdAsync(updatePodcastDto.PodcastId, cancellationToken);
 
-            if (podcastDto.AudioUpload is not null)
+                if (podcast is null)
+                {
+                    _logger.LogWarning("Обновление. Подкаст не найден");
+                    return;
+                }
+
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+                var post = await _unitOfWork.Posts.GetByPodcastIdAsync(podcast.PodcastId, cancellationToken);
+
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+
+                if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+                {
+                    _logger.LogWarning("Подкаст изменить может только автор поста или администратор");
+                    return;
+                }
+
+                _mapper.Map(updatePodcastDto, podcast);
+
+                if (updatePodcastDto.CoverImageUpload is not null)
+                {
+                    podcast.CoverImage = await _audioService.GetCoverImageAsync(updatePodcastDto.CoverImageUpload, cancellationToken);
+                }
+
+                if (updatePodcastDto.AudioUpload is not null)
+                {
+                    var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(updatePodcastDto.AudioUpload, cancellationToken);
+
+                    podcast.AudioFile = path;
+                    podcast.Duration = duration;
+                    podcast.Bitrate = bitrate;
+                    podcast.Transcript = transcript;
+                }
+
+                await _unitOfWork.Podcasts.UpdateAsync(podcast, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Подкаст успешно обновлен");
+            }
+            catch (Exception ex)
             {
-                var (path, duration, bitrate, transcript) = await _audioService.GetAudioMetadataAsync(podcastDto.AudioUpload, cancellationToken);
-                
-                podcast.AudioFile = path;
-                podcast.Duration = duration;
-                podcast.Transcript = transcript;
+                _logger.LogError(ex, "Ошибка при обновлении подкаста");
+                throw;
             }
-
-            await _unitOfWork.Podcasts.UpdateAsync(podcast, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeletePodcastAsync(int id, CancellationToken cancellationToken)
+        public async Task DeletePodcastAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
+            try
+            {
+                var podcast = await _unitOfWork.Podcasts.GetByIdAsync(id, cancellationToken);
 
-            await _cleanup.CleanupAsync(podcast, cancellationToken);
+                if (podcast is null)
+                {
+                    _logger.LogWarning("Удаление. Подкаст не найден");
+                    return;
+                }
 
-            await _unitOfWork.Podcasts.DeleteAsync(podcast, cancellationToken);
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                var post = await _unitOfWork.Posts.GetByPodcastIdAsync(podcast.PodcastId, cancellationToken);
+
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+
+                if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+                {
+                    _logger.LogWarning("Подкаст удалить может только автор поста или администратор");
+                    return;
+                }
+
+                await _cleanup.CleanupAsync(podcast, cancellationToken);
+
+                await _unitOfWork.Podcasts.DeleteAsync(podcast, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Подкаст успешно удален");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении подкаста");
+                throw;
+            }
         }
 
         public async Task ListeningAsync(int podcastId, CancellationToken cancellationToken)
         {
-            var podcast = await _unitOfWork.Podcasts.GetByIdAsync(podcastId, cancellationToken);
+            try
+            {
+                var podcast = await _unitOfWork.Podcasts.GetByIdAsync(podcastId, cancellationToken);
 
-            podcast.ListenCount += 1;
+                if (podcast is null)
+                {
+                    _logger.LogWarning("Прослушивание. Подкаст не найден");
+                    return;
+                }
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                podcast.ListenCount += 1;
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Прослушивание успешно засчитано");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении счётчика прослушиваний");
+                throw;
+            }
         }
     }
 }

@@ -22,11 +22,6 @@ namespace PodcastBlog.Presentation.Controllers
         {
             var token = await _authService.AuthenticateAsync(loginDto.Email, loginDto.Password, cancellationToken);
 
-            if (token is null)
-            {
-                return Unauthorized("Неверный email или пароль");
-            }
-
             return Ok(new { token });
         }
 
@@ -36,12 +31,7 @@ namespace PodcastBlog.Presentation.Controllers
         {
             var result = await _authService.RegisterAsync(registrationDto, cancellationToken);
 
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
-            }
-
-            return Ok("Регистрация прошла успешно");
+            return Ok();
         }
 
         [Authorize]

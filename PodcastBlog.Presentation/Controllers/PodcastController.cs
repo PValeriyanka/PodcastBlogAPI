@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Podcast;
 
 namespace PodcastBlog.Presentation.Controllers
 {
@@ -28,19 +28,19 @@ namespace PodcastBlog.Presentation.Controllers
         // POST: api/podcasts
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<PodcastDto>> CreatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
+        public async Task<ActionResult> CreatePodcastAsync([FromBody] CreatePodcastDto createPodcastDto, CancellationToken cancellationToken)
         {
-            await _podcastService.CreatePodcastAsync(podcastDto, cancellationToken);
+            await _podcastService.CreatePodcastAsync(createPodcastDto, cancellationToken);
 
-            return CreatedAtAction(nameof(GetPodcastByIdAsync), new { id = podcastDto.PodcastId }, podcastDto);
+            return Ok();
         }
 
         // PUT: api/podcasts/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdatePodcastAsync([FromBody] PodcastDto podcastDto, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdatePodcastAsync([FromBody] UpdatePodcastDto updatePodcastDto, CancellationToken cancellationToken)
         {
-            await _podcastService.UpdatePodcastAsync(podcastDto, cancellationToken);
+            await _podcastService.UpdatePodcastAsync(updatePodcastDto, User, cancellationToken);
 
             return NoContent();
         }
@@ -50,7 +50,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> DeletePodcastAsync(int id, CancellationToken cancellationToken)
         {
-            await _podcastService.DeletePodcastAsync(id, cancellationToken);
+            await _podcastService.DeletePodcastAsync(id, User, cancellationToken);
 
             return NoContent();
         }

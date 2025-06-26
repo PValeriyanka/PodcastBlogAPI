@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.User;
 using PodcastBlog.Domain.Parameters;
 using System.Text.Json;
 
@@ -32,7 +32,7 @@ namespace PodcastBlog.Presentation.Controllers
 
         // GET: api/users/{id}
         [HttpGet("{id}")]
-        [Authorize(Policy = "AdminOnly")]
+        [Authorize]
         public async Task<ActionResult<UserDto>> GetUserByIdAsync(int id, CancellationToken cancellationToken)
         {
             var userDto = await _userService.GetUserByIdAsync(id, cancellationToken);
@@ -40,12 +40,32 @@ namespace PodcastBlog.Presentation.Controllers
             return Ok(userDto);
         }
 
+        // PUT : api/users/profile
+        [HttpPut("profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateUserAsync([FromBody] UpdateUserDto updateUserDto, CancellationToken cancellationToken)
+        {
+            await _userService.UpdateUserAsync(updateUserDto, User, cancellationToken);
+
+            return NoContent();
+        }
+
+        // PUT : api/users/role
+        [HttpPut("role")]
+        [Authorize(Policy = "AdminOnly")]
+        public async Task<IActionResult> UpdateUserRoleAsync([FromBody] UpdateUserRoleDto updateUserRoleDto, CancellationToken cancellationToken)
+        {
+            await _userService.UpdateUserRoleAsync(updateUserRoleDto, cancellationToken);
+
+            return NoContent();
+        }
+
         // DELETE: api/users/{id}
         [HttpDelete("{id}")]
-        [Authorize(Policy = "AdminOnly")]
+        [Authorize]
         public async Task<IActionResult> DeleteUserAsync(int id, CancellationToken cancellationToken)
         {
-            await _userService.DeleteUserAsync(id, cancellationToken);
+            await _userService.DeleteUserAsync(id, User, cancellationToken);
 
             return NoContent();
         }
@@ -55,7 +75,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> SubscriptionAsync(int authorId, CancellationToken cancellationToken)
         {
-            await _userService.SubscriptionAsync(User, authorId, cancellationToken);
+            await _userService.SubscriptionAsync(authorId, User, cancellationToken);
 
             return Ok();
         }

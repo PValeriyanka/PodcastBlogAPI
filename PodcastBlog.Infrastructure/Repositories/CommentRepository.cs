@@ -14,6 +14,7 @@ namespace PodcastBlog.Infrastructure.Repositories
             var commentsQuery = _context.Comments
                 .Where(c => c.PostId == postId && c.Status == CommentStatus.Approved)
                 .Include(c => c.User)
+                .AsNoTracking()
                 .AsQueryable();
 
             var count = await commentsQuery.CountAsync(cancellationToken);

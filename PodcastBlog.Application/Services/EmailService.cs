@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PodcastBlog.Application.Interfaces.Services;
 using System.Net;
 using System.Net.Mail;
@@ -9,9 +10,11 @@ namespace PodcastBlog.Application.Services
     {
         private readonly SmtpClient _smtpClient;
         private readonly string _fromAddress;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IConfiguration config)
+        public EmailService(IConfiguration config, ILogger<EmailService> logger)
         {
+            _logger = logger;
             _smtpClient = new SmtpClient
             {
                 Host = config["Email:Host"],
@@ -27,17 +30,27 @@ namespace PodcastBlog.Application.Services
 
         public async Task SendNotificationEmailAsync(string toEmail, string subject, string body)
         {
-            var mail = new MailMessage
+            try
             {
-                From = new MailAddress(_fromAddress),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = false
-            };
+                var mail = new MailMessage
+                {
+                    From = new MailAddress(_fromAddress),
+                    Subject = subject,
+                    Body = body,
+                    IsBodyHtml = false
+                };
 
-            mail.To.Add(toEmail);
+                mail.To.Add(toEmail);
 
-            await _smtpClient.SendMailAsync(mail);
+                await _smtpClient.SendMailAsync(mail);
+
+                _logger.LogInformation("Письмо успешно отправлено на email");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при отправке письма на email");
+                throw;
+            }
         }
     }
 

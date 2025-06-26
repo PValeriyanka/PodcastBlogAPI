@@ -1,4 +1,4 @@
-﻿namespace PodcastBlog.Application.ModelsDto
+﻿namespace PodcastBlog.Application.ModelsDto.Tag
 {
     public class TagDto
     {

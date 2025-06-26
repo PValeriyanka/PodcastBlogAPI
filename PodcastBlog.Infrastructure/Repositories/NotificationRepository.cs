@@ -14,6 +14,7 @@ namespace PodcastBlog.Infrastructure.Repositories
             var notificationsQuery = _context.Notifications
                 .Where(n => n.UserId == userId)
                 .Include(n => n.User)
+                .AsNoTracking()
                 .AsQueryable();
 
             var count = await notificationsQuery.CountAsync(cancellationToken);

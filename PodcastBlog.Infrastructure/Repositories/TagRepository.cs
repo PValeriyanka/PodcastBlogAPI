@@ -11,7 +11,7 @@ namespace PodcastBlog.Infrastructure.Repositories
 
         public async Task<PagedList<Tag>> GetAllTagsPagedAsync(Parameters parameters, CancellationToken cancellationToken)
         {
-            var tagsQuery = _context.Tags.OrderBy(t => t.Name).AsQueryable();
+            var tagsQuery = _context.Tags.OrderBy(t => t.Name).AsNoTracking().AsQueryable();
 
             var count = await tagsQuery.CountAsync(cancellationToken);
 

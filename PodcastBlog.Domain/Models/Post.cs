@@ -21,8 +21,8 @@
 
     public enum PostStatus
     {
-        Draft,          // Черновик
-        Scheduled,      // Запланировано 
-        Published       // Опубликовано 
+        Draft,          
+        Scheduled,       
+        Published        
     }
 }

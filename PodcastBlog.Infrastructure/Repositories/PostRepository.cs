@@ -19,6 +19,7 @@ namespace PodcastBlog.Infrastructure.Repositories
                 .Include(p => p.Author)
                 .Include(p => p.Comments)
                 .Include(p => p.Podcast)
+                .AsNoTracking()
                 .ToListAsync(cancellationToken);
         }
 
@@ -33,6 +34,7 @@ namespace PodcastBlog.Infrastructure.Repositories
                     .ThenInclude(c => c.User)
                 .Include(p => p.Comments)
                     .ThenInclude(c => c.Replies)
+                .AsNoTracking()
                 .AsQueryable();
 
             switch (type)

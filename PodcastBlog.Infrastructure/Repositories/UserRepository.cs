@@ -11,7 +11,7 @@ namespace PodcastBlog.Infrastructure.Repositories
 
         public async Task<PagedList<User>> GetAllUsersPagedAsync(Parameters parameters, CancellationToken cancellationToken)
         {
-            var usersQuery = _context.Users.OrderBy(u => u.Name).AsQueryable();
+            var usersQuery = _context.Users.OrderBy(u => u.Name).AsNoTracking().AsQueryable();
 
             var count = await usersQuery.CountAsync(cancellationToken);
 

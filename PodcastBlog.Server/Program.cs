@@ -85,7 +85,7 @@ namespace PodcastBlog.Server
                     Name = "Authorization",
                     In = ParameterLocation.Header,
                     Type = SecuritySchemeType.Http,
-                    Description = "¬ведите токен в формате: Bearer {token}",
+                    Description = "¬ведите токен: {token}",
                     Reference = new OpenApiReference
                     {
                         Id = "Bearer",
@@ -105,7 +105,11 @@ namespace PodcastBlog.Server
             });
 
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<GlobalExceptionFilter>();
+            })
+            .AddDataAnnotationsLocalization();
 
             builder.Services.AddAutoMapper(typeof(MappingProfile));
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Comment;
 using PodcastBlog.Domain.Parameters;
 using System.Text.Json;
 
@@ -43,11 +43,11 @@ namespace PodcastBlog.Presentation.Controllers
         // POST: api/comments
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<CommentDto>> CreateCommentAsync([FromBody] CommentDto commentDto, int? parentId, CancellationToken cancellationToken)
+        public async Task<ActionResult> CreateCommentAsync([FromBody] CreateCommentDto createCommentDto, CancellationToken cancellationToken)
         {
-            await _commentService.CreateCommentAsync(commentDto, parentId, cancellationToken);
+            await _commentService.CreateCommentAsync(createCommentDto, User, cancellationToken);
 
-            return CreatedAtAction(nameof(GetCommentByIdAsync), new { id = commentDto.CommentId }, commentDto);
+            return Ok();
         }
 
         // PUT: api/comments/publish/{id}
@@ -55,7 +55,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> PublishCommentAsync(int id, CancellationToken cancellationToken)
         {
-            await _commentService.PublishCommentAsync(id, cancellationToken);
+            await _commentService.PublishCommentAsync(id, User, cancellationToken);
 
             return NoContent();
         }
@@ -65,7 +65,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteCommentAsync(int id, CancellationToken cancellationToken)
         {
-            await _commentService.DeleteCommentAsync(id, cancellationToken);
+            await _commentService.DeleteCommentAsync(id, User, cancellationToken);
 
             return NoContent();
         }

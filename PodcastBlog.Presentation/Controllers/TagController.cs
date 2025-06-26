@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Tag;
 using PodcastBlog.Domain.Parameters;
 using System.Text.Json;
 
@@ -43,21 +43,11 @@ namespace PodcastBlog.Presentation.Controllers
         // POST: api/tags
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<TagDto>> CreateTagAsync([FromBody] TagDto tagDto, CancellationToken cancellationToken)
+        public async Task<ActionResult<TagDto>> CreateTagAsync([FromBody] CreateTagDto createTagDto, CancellationToken cancellationToken)
         {
-            await _tagService.CreateTagAsync(tagDto, cancellationToken);
+            await _tagService.CreateTagAsync(createTagDto, cancellationToken);
 
-            return CreatedAtAction(nameof(GetTagByIdAsync), new { id = tagDto.TagId }, tagDto);
-        }
-
-        // PUT: api/tags/{id}
-        [HttpPut("{id}")]
-        [Authorize(Policy = "AdminOnly")]
-        public async Task<IActionResult> UpdateTagAsync([FromBody] TagDto tagDto, CancellationToken cancellationToken)
-        {
-            await _tagService.UpdateTagAsync(tagDto, cancellationToken);
-
-            return NoContent();
+            return Ok();
         }
 
         // DELETE: api/tags/{id}

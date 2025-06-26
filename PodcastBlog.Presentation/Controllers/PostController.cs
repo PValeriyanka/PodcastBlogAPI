@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Post;
 using PodcastBlog.Domain.Parameters.ModelParameters;
 using System.Text.Json;
 
@@ -91,29 +91,29 @@ namespace PodcastBlog.Presentation.Controllers
         // POST: api/posts/publish
         [HttpPost("publish")]
         [Authorize]
-        public async Task<ActionResult<PostDto>> CreatePublicPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
+        public async Task<ActionResult<PostDto>> CreatePublicPostAsync([FromBody] CreatePostDto createPostDto, CancellationToken cancellationToken)
         {
-            await _postService.CreatePostAsync(postDto, User, "Publish", cancellationToken);
+            await _postService.CreatePostAsync(createPostDto, User, "Publish", cancellationToken);
 
-            return CreatedAtAction(nameof(GetPostByIdAsync), new { id = postDto.PostId }, postDto);
+            return Ok();
         }
 
         // POST: api/posts/draft
         [HttpPost("draft")]
         [Authorize]
-        public async Task<ActionResult<PostDto>> CreateDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
+        public async Task<ActionResult<PostDto>> CreateDraftPostAsync([FromBody] CreatePostDto createPostDto, CancellationToken cancellationToken)
         {
-            await _postService.CreatePostAsync(postDto, User, "Draft", cancellationToken);
+            await _postService.CreatePostAsync(createPostDto, User, "Draft", cancellationToken);
 
-            return CreatedAtAction(nameof(GetPostByIdAsync), new { id = postDto.PostId }, postDto);
+            return Ok();
         }
 
         // PUT: api/posts/{id}
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdatePublicPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdatePublicPostAsync([FromBody] UpdatePostDto updatePostDto, CancellationToken cancellationToken)
         {
-            await _postService.UpdatePostAsync(postDto, User, null, cancellationToken);
+            await _postService.UpdatePostAsync(updatePostDto, User, null, cancellationToken);
 
             return NoContent();
         }
@@ -121,9 +121,9 @@ namespace PodcastBlog.Presentation.Controllers
         // PUT: api/posts/draft/{id}
         [HttpPut("draft/{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdateDraftPostAsync([FromBody] UpdatePostDto updatePostDto, CancellationToken cancellationToken)
         {
-            await _postService.UpdatePostAsync(postDto, User, "Draft", cancellationToken);
+            await _postService.UpdatePostAsync(updatePostDto, User, "Draft", cancellationToken);
 
             return NoContent();
         }
@@ -131,9 +131,9 @@ namespace PodcastBlog.Presentation.Controllers
         // PUT: api/posts/publish/{id}
         [HttpPut("publish/{id}")]
         [Authorize]
-        public async Task<IActionResult> UpdateAndPublicDraftPostAsync([FromBody] PostDto postDto, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdateAndPublicDraftPostAsync([FromBody] UpdatePostDto updatePostDto, CancellationToken cancellationToken)
         {
-            await _postService.UpdatePostAsync(postDto, User,"Publish", cancellationToken);
+            await _postService.UpdatePostAsync(updatePostDto, User, "Publish", cancellationToken);
 
             return NoContent();
         }
@@ -143,7 +143,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> DeletePostAsync(int id, CancellationToken cancellationToken)
         {
-            await _postService.DeletePostAsync(id, cancellationToken);
+            await _postService.DeletePostAsync(id, User, cancellationToken);
 
             return NoContent();
         }
@@ -153,7 +153,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> PostLikeAsync(int postId, CancellationToken cancellationToken)
         {
-            await _userService.PostLikeAsync(User, postId, cancellationToken);
+            await _userService.PostLikeAsync(postId, User, cancellationToken);
 
             return Ok();
         }

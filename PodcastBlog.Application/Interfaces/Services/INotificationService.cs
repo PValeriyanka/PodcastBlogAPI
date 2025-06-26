@@ -1,4 +1,4 @@
-﻿using PodcastBlog.Application.ModelsDto;
+﻿using PodcastBlog.Application.ModelsDto.Notification;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using System.Security.Claims;
@@ -13,7 +13,7 @@ namespace PodcastBlog.Application.Interfaces.Services
         Task NewSubscriberNotificationAsync(int userId, int authorId, CancellationToken cancellationToken);
         Task NewLikeNotificationAsync(int userId, Post post, CancellationToken cancellationToken);
         Task NewCommentNotificationAsync(Comment comment, Post post, CancellationToken cancellationToken);
-        Task ReadNotificationAsync(int id, CancellationToken cancellationToken);
-        Task DeleteNotificationAsync(int id, CancellationToken cancellationToken);
+        Task ReadNotificationAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
+        Task DeleteNotificationAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken);
     }
 }

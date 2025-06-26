@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Application.ModelsDto;
+using PodcastBlog.Application.ModelsDto.Notification;
 using PodcastBlog.Domain.Parameters;
 using System.Text.Json;
 
@@ -21,7 +21,7 @@ namespace PodcastBlog.Presentation.Controllers
         // GET: api/notifications
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetNotificationsByPostPagedAsync([FromQuery] Parameters parameters, CancellationToken cancellationToken)
+        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetNotificationsByUserPagedAsync([FromQuery] Parameters parameters, CancellationToken cancellationToken)
         {
             var notificationsDto = await _notificationService.GetNotificationsByUserPagedAsync(User, parameters, cancellationToken);
 
@@ -35,7 +35,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<ActionResult<NotificationDto>> ReadNotificationAsync(int id, CancellationToken cancellationToken)
         {
-            await _notificationService.ReadNotificationAsync(id, cancellationToken);
+            await _notificationService.ReadNotificationAsync(id, User, cancellationToken);
 
             return Ok();
         }
@@ -45,7 +45,7 @@ namespace PodcastBlog.Presentation.Controllers
         [Authorize]
         public async Task<IActionResult> DeleteNotificationAsync(int id, CancellationToken cancellationToken)
         {
-            await _notificationService.DeleteNotificationAsync(id, cancellationToken);
+            await _notificationService.DeleteNotificationAsync(id, User, cancellationToken);
 
             return NoContent();
         }
