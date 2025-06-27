@@ -269,7 +269,7 @@ namespace PodcastBlog.Application.Services
 
                 int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
-                var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
 
                 if (userId != notification.UserId && user.Role != UserRole.Administrator)
                 {
