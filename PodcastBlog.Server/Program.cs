@@ -13,6 +13,7 @@ using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Infrastructure;
 using PodcastBlog.Infrastructure.Authentication;
+using PodcastBlog.Infrastructure.ExceptionsHandler;
 using PodcastBlog.Infrastructure.Repositories;
 using System.Text;
 

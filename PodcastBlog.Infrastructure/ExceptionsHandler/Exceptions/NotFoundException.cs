@@ -1,0 +1,7 @@
+﻿namespace PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions
+{
+    public class NotFoundException : Exception
+    {
+        public NotFoundException(string message) : base(message) { }
+    }
+}

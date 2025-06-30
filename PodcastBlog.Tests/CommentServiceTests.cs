@@ -9,6 +9,7 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -63,7 +64,7 @@ namespace PodcastBlog.Tests
         }
 
         [Fact]
-        public async Task GetCommentsByPostPagedAsync_NotFound()
+        public async Task GetCommentsByPostPagedAsync_Empty()
         {
             var parameters = new Parameters();
             var postId = TestData.Post.PostId;
@@ -98,9 +99,7 @@ namespace PodcastBlog.Tests
         {
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Comment)null!);
 
-            var result = await _commentService.GetCommentByIdAsync(999, CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<NotFoundException>(() => _commentService.GetCommentByIdAsync(999, CancellationToken.None));
         }
 
         [Fact]
@@ -127,6 +126,23 @@ namespace PodcastBlog.Tests
         }
 
         [Fact]
+        public async Task CreateCommentAsync_NotFound()
+        {
+            var user = TestData.User;
+            var createCommentDto = new CreateCommentDto
+            {
+                Content = "New comment",
+                PostId = 999
+            };
+            var comment = new Comment { Content = createCommentDto.Content, PostId = 999 };
+
+            _mapperMock.Setup(m => m.Map<Comment>(createCommentDto)).Returns(comment);
+            _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(createCommentDto.PostId, It.IsAny<CancellationToken>())).ReturnsAsync((Post)null!);
+
+            await Assert.ThrowsAsync<NotFoundException>(() => _commentService.CreateCommentAsync(createCommentDto, GetClaims(user.Id), CancellationToken.None));
+        }
+
+        [Fact]
         public async Task PublishCommentAsync_Success()
         {
             var comment = TestData.Comment;
@@ -148,10 +164,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(comment.CommentId, It.IsAny<CancellationToken>())).ReturnsAsync(comment);
 
-            await _commentService.PublishCommentAsync(comment.CommentId, GetClaims(another.Id), CancellationToken.None);
-
-            Assert.NotEqual(CommentStatus.Approved, comment.Status);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _commentService.PublishCommentAsync(comment.CommentId, GetClaims(another.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -161,9 +174,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Comment)null!);
 
-            await _commentService.PublishCommentAsync(999, GetClaims(user.Id), CancellationToken.None);
-
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _commentService.PublishCommentAsync(999, GetClaims(user.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -192,11 +203,7 @@ namespace PodcastBlog.Tests
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(comment.CommentId, It.IsAny<CancellationToken>())).ReturnsAsync(comment);
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
 
-            await _commentService.DeleteCommentAsync(comment.CommentId, GetClaims(another.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(comment, It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Comments.DeleteAsync(comment, It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _commentService.DeleteCommentAsync(comment.CommentId, GetClaims(another.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -206,10 +213,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Comment)null!);
 
-            await _commentService.DeleteCommentAsync(999, GetClaims(user.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Comment>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Comments.DeleteAsync(It.IsAny<Comment>(), It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _commentService.DeleteCommentAsync(999, GetClaims(user.Id), CancellationToken.None));
         }
     }
 }

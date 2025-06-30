@@ -9,6 +9,7 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -76,9 +77,7 @@ namespace PodcastBlog.Tests
         {
             _unitOfWorkMock.Setup(u => u.Notifications.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Notification)null!);
 
-            var result = await _notificationService.GetNotificationByIdAsync(999, CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<NotFoundException>(() => _notificationService.GetNotificationByIdAsync(999, CancellationToken.None));
         }
 
         [Fact]
@@ -170,10 +169,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Notifications.GetByIdAsync(notification.NotificationId, It.IsAny<CancellationToken>())).ReturnsAsync(notification);
 
-            await _notificationService.ReadNotificationAsync(notification.NotificationId, GetClaims(another.Id), CancellationToken.None);
-
-            Assert.False(notification.IsRead);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _notificationService.ReadNotificationAsync(notification.NotificationId, GetClaims(another.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -183,9 +179,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Notifications.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Notification)null!);
 
-            await _notificationService.ReadNotificationAsync(999, GetClaims(user.Id), CancellationToken.None);
-
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _notificationService.ReadNotificationAsync(999, GetClaims(user.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -212,10 +206,7 @@ namespace PodcastBlog.Tests
             _unitOfWorkMock.Setup(u => u.Notifications.GetByIdAsync(notification.NotificationId, It.IsAny<CancellationToken>())).ReturnsAsync(notification);
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(another.Id, It.IsAny<CancellationToken>())).ReturnsAsync(another);
 
-            await _notificationService.DeleteNotificationAsync(notification.NotificationId, GetClaims(another.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Notifications.DeleteAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _notificationService.DeleteNotificationAsync(notification.NotificationId, GetClaims(another.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -225,10 +216,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Notifications.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Notification)null!);
 
-            await _notificationService.DeleteNotificationAsync(999, GetClaims(user.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Notifications.DeleteAsync(It.IsAny<Notification>(), It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _notificationService.DeleteNotificationAsync(999, GetClaims(user.Id), CancellationToken.None));
         }
     }
 }

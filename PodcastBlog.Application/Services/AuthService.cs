@@ -6,6 +6,7 @@ using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto.Authentication;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Infrastructure.Authentication;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -25,82 +26,73 @@ namespace PodcastBlog.Application.Services
             _logger = logger;
         }
 
-        public async Task<string?> AuthenticateAsync(string email, string password, CancellationToken cancellationToken)
+        public async Task<string> AuthenticateAsync(string email, string password, CancellationToken cancellationToken)
         {
-            try
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user is null || !await _userManager.CheckPasswordAsync(user, password))
             {
-                var user = await _userManager.FindByEmailAsync(email);
+                _logger.LogWarning("Неудачная попытка входа");
 
-                if (user is null || !await _userManager.CheckPasswordAsync(user, password))
-                {
-                    _logger.LogWarning("Неудачная попытка входа");
-                    return null;
-                }
-
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role.ToString())
-                };
-
-                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
-                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-                var token = new JwtSecurityToken(
-                    issuer: _jwtOptions.Issuer,
-                    audience: _jwtOptions.Audience,
-                    claims: claims,
-                    expires: DateTime.UtcNow.AddMinutes(60),
-                    signingCredentials: creds
-                );
-
-                _logger.LogInformation("Вход выполнен успешно");
-                return new JwtSecurityTokenHandler().WriteToken(token);
+                throw new AuthException("Неверный логин или пароль");
             }
-            catch (Exception ex)
+
+            var claims = new List<Claim>
             {
-                _logger.LogError(ex, "Ошибка во время аутентификации");
-                return null;
-            }
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.Key));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _jwtOptions.Issuer,
+                audience: _jwtOptions.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(60),
+                signingCredentials: creds
+            );
+
+            _logger.LogInformation("Вход выполнен успешно");
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public async Task<IdentityResult> RegisterAsync(RegistrationDto registerDto, CancellationToken cancellationToken)
         {
-            try
+            var existing = await _userManager.FindByEmailAsync(registerDto.Email);
+
+            if (existing is not null)
             {
-                var existing = await _userManager.FindByEmailAsync(registerDto.Email);
+                _logger.LogWarning("Регистрация отклонена");
 
-                if (existing is not null)
-                {
-                    _logger.LogWarning("Регистрация отклонена");
-                    return IdentityResult.Failed(new IdentityError { Description = "Пользователь с таким email уже существует" });
-                }
-
-                var user = new User
-                {
-                    UserName = registerDto.UserName,
-                    Name = registerDto.Name,
-                    Email = registerDto.Email,
-                    Role = UserRole.Author,
-                    EmailNotify = registerDto.EmailNotify
-                };
-
-                var result = await _userManager.CreateAsync(user, registerDto.Password);
-
-                if (result.Succeeded)
-                    _logger.LogInformation("Регистрация выполнена успешно");
-                else
-                    _logger.LogWarning("Ошибка регистрации");
-
-                return result;
+                throw new AuthException("Пользователь с таким email уже существует");
             }
-            catch (Exception ex)
+
+            var user = new User
             {
-                _logger.LogError(ex, "Ошибка время регистрации");
-                return IdentityResult.Failed(new IdentityError { Description = "Внутренняя ошибка сервиса регистрации" });
+                UserName = registerDto.UserName,
+                Name = registerDto.Name,
+                Email = registerDto.Email,
+                Role = UserRole.Author,
+                EmailNotify = registerDto.EmailNotify
+            };
+
+            var result = await _userManager.CreateAsync(user, registerDto.Password);
+
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("Ошибка регистрации");
+
+                throw new AuthException("Регистрация не удалась");
             }
+
+            _logger.LogInformation("Регистрация выполнена успешно");
+
+            return result;
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using PodcastBlog.Application.Interfaces.Services;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 
 namespace PodcastBlog.Application.Services
 {
@@ -13,8 +14,13 @@ namespace PodcastBlog.Application.Services
             _logger = logger;
         }
 
-        public async Task<string> GetCoverImageAsync(IFormFile cover, CancellationToken cancellationToken)
+        public async Task<string?> GetCoverImageAsync(IFormFile cover, CancellationToken cancellationToken)
         {
+            if (cover is null)
+            {
+                return null;
+            }
+
             try
             {
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(cover.FileName);
@@ -26,17 +32,24 @@ namespace PodcastBlog.Application.Services
                 await cover.CopyToAsync(stream, cancellationToken);
 
                 _logger.LogInformation("Изображение успешно загружено");
+
                 return $"/images/{fileName}";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при загрузке изображения");
-                throw;
+
+                return null;
             }
         }
 
         public async Task<(string path, int duration, int bitrate, string transcription)> GetAudioMetadataAsync(IFormFile audio, CancellationToken cancellationToken)
         {
+            if (audio is null)
+            {
+                throw new MediaException("Аудиофайл обязателен для подкаста");
+            }
+
             try
             {
                 var fileName = Guid.NewGuid() + Path.GetExtension(audio.FileName);
@@ -58,7 +71,8 @@ namespace PodcastBlog.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при обработке аудиофайла");
-                throw;
+
+                throw new MediaException("Не удалось обработать аудиофайл");
             }
         }
 

@@ -3,10 +3,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using PodcastBlog.Application.ModelsDto.Authentication;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Application.Services;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Infrastructure.Authentication;
 using PodcastBlog.Tests.TestUtils;
+using System.Security.Authentication;
 
 namespace PodcastBlog.Tests
 {
@@ -50,9 +52,7 @@ namespace PodcastBlog.Tests
         {
             _userManagerMock.Setup(u => u.FindByEmailAsync("null@blog.com")).ReturnsAsync((User)null!);
 
-            var result = await _authService.AuthenticateAsync("null@blog.com", "password", CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<AuthException>(() => _authService.AuthenticateAsync("null@blog.com", "password", CancellationToken.None));
         }
 
         [Fact]
@@ -63,9 +63,7 @@ namespace PodcastBlog.Tests
             _userManagerMock.Setup(u => u.FindByEmailAsync(user.Email)).ReturnsAsync(user);
             _userManagerMock.Setup(u => u.CheckPasswordAsync(user, "null")).ReturnsAsync(false);
 
-            var result = await _authService.AuthenticateAsync(user.Email, "null", CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<AuthException>(() => _authService.AuthenticateAsync(user.Email, "null", CancellationToken.None));
         }
 
         [Fact]
@@ -101,9 +99,25 @@ namespace PodcastBlog.Tests
 
             _userManagerMock.Setup(u => u.FindByEmailAsync(registrationDto.Email)).ReturnsAsync(TestData.User);
 
-            var result = await _authService.RegisterAsync(registrationDto, CancellationToken.None);
+            await Assert.ThrowsAsync<AuthException>(() => _authService.RegisterAsync(registrationDto, CancellationToken.None));
+        }
 
-            Assert.False(result.Succeeded);
+        [Fact]
+        public async Task RegisterAsync_Failed()
+        {
+            var dto = new RegistrationDto
+            {
+                Email = "test@blog.com",
+                UserName = "test",
+                Name = "Test",
+                Password = "test",
+                EmailNotify = false
+            };
+
+            _userManagerMock.Setup(u => u.FindByEmailAsync(dto.Email)).ReturnsAsync((User)null!);
+            _userManagerMock.Setup(u => u.CreateAsync(It.IsAny<User>(), dto.Password)).ReturnsAsync(IdentityResult.Failed());
+
+            await Assert.ThrowsAsync<AuthException>(() => _authService.RegisterAsync(dto, CancellationToken.None));
         }
     }
 }

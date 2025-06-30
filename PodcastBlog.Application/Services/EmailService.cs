@@ -49,7 +49,6 @@ namespace PodcastBlog.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при отправке письма на email");
-                throw;
             }
         }
     }
