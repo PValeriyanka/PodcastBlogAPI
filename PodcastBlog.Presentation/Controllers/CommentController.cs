@@ -7,6 +7,7 @@ using System.Text.Json;
 
 namespace PodcastBlog.Presentation.Controllers
 {
+    [ApiController]
     [Route("api/comments")]
     public class CommentsController : ControllerBase
     {

@@ -148,20 +148,11 @@ namespace PodcastBlog.Server
 
             if (app.Environment.IsDevelopment())
             {
-                app.UseDeveloperExceptionPage();
-
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-            else
-            {
-                app.UseExceptionHandler("/error");
-                app.UseHsts();
-            }
 
             app.UseStaticFiles();
-
-            app.UseHttpsRedirection();
             app.UseRouting();
 
             app.UseAuthentication();

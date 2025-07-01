@@ -16,12 +16,12 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
             _logger = logger;
         }
 
-        public Task OnExceptionAsync(ExceptionContext context)
+        public async Task OnExceptionAsync(ExceptionContext context)
         {
             var ex = context.Exception;
 
             _logger.LogError(ex, "Обработано глобальное исключение");
-
+            
             var response = ex switch
             {
                 NotFoundException => new ObjectResult(new { message = ex.Message }) { StatusCode = 404 },
@@ -40,7 +40,7 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
             context.Result = response;
             context.ExceptionHandled = true;
 
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
     }
 }
