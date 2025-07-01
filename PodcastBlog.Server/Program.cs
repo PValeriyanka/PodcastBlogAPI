@@ -26,7 +26,19 @@ namespace PodcastBlog.Server
             var builder = WebApplication.CreateBuilder(args);
 
             string? connectionString = builder.Configuration.GetConnectionString("RemoteConnection");
+
             builder.Services.AddDbContext<PodcastBlogContext>(options => options.UseSqlServer(connectionString));
+
+            builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+
+            builder.Services.Configure<IdentityOptions>(options =>
+            {
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequiredLength = 6;
+            });
 
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -60,19 +72,44 @@ namespace PodcastBlog.Server
 
             builder.Services.AddScoped<IAuthService, AuthService>();
 
+            builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+            builder.Services.AddScoped<GlobalExceptionFilter>();
+
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<GlobalExceptionFilter>();
+            }).AddDataAnnotationsLocalization();
+
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                     .AddEntityFrameworkStores<PodcastBlogContext>()
                     .AddDefaultTokenProviders();
 
-            builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+            var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
 
-            builder.Services.Configure<IdentityOptions>(options =>
+            builder.Services.AddAuthentication(options =>
             {
-                options.Password.RequireDigit = false;
-                options.Password.RequireLowercase = false;
-                options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequireUppercase = false;
-                options.Password.RequiredLength = 6;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtOptions.Audience,
+                    ValidateLifetime = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
+                    ValidateIssuerSigningKey = true
+                };
+            });
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("AdminOnly", policy =>
+                    policy.RequireRole("Administrator"));
             });
 
             builder.Services.AddSwaggerGen(c =>
@@ -105,51 +142,24 @@ namespace PodcastBlog.Server
                 });
             });
 
-
-            builder.Services.AddControllers(options =>
-            {
-                options.Filters.Add<GlobalExceptionFilter>();
-            })
-            .AddDataAnnotationsLocalization();
-
-            builder.Services.AddAutoMapper(typeof(MappingProfile));
-
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy("AdminOnly", policy =>
-                    policy.RequireRole("Administrator"));
-            });
-
-            var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>();
-
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = jwtOptions.Issuer,
-                    ValidateAudience = true,
-                    ValidAudience = jwtOptions.Audience,
-                    ValidateLifetime = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
-                    ValidateIssuerSigningKey = true
-                };
-            });
-
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
             {
+                app.UseDeveloperExceptionPage();
+
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+            else
+            {
+                app.UseExceptionHandler("/error");
+                app.UseHsts();
+            }
 
             app.UseStaticFiles();
+
+            app.UseHttpsRedirection();
             app.UseRouting();
 
             app.UseAuthentication();

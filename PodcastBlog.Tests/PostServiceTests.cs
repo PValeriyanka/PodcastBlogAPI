@@ -10,6 +10,7 @@ using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using PodcastBlog.Domain.Parameters.ModelParameters;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -104,9 +105,7 @@ namespace PodcastBlog.Tests
         {
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Post)null!);
 
-            var result = await _postService.GetPostByIdAsync(999, CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<NotFoundException>(() => _postService.GetPostByIdAsync(999, CancellationToken.None));
         }
 
         [Fact]
@@ -190,10 +189,7 @@ namespace PodcastBlog.Tests
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(post.PostId, It.IsAny<CancellationToken>())).ReturnsAsync(post);
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(another.Id, It.IsAny<CancellationToken>())).ReturnsAsync(another);
 
-            await _postService.UpdatePostAsync(updatePostDto, GetClaims(another.Id), null, CancellationToken.None);
-
-            _unitOfWorkMock.Verify(u => u.Posts.UpdateAsync(It.IsAny<Post>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _postService.UpdatePostAsync(updatePostDto, GetClaims(another.Id), null, CancellationToken.None));
         }
 
         [Fact]
@@ -204,9 +200,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(updatePostDto.PostId, It.IsAny<CancellationToken>())).ReturnsAsync((Post)null!);
 
-            await _postService.UpdatePostAsync(updatePostDto, GetClaims(user.Id), null, CancellationToken.None);
-
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _postService.UpdatePostAsync(updatePostDto, GetClaims(user.Id), null, CancellationToken.None));
         }
 
         [Fact]
@@ -235,11 +229,7 @@ namespace PodcastBlog.Tests
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(post.PostId, It.IsAny<CancellationToken>())).ReturnsAsync(post);
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(another.Id, It.IsAny<CancellationToken>())).ReturnsAsync(another);
 
-            await _postService.DeletePostAsync(post.PostId, GetClaims(another.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Post>(), It.IsAny<ClaimsPrincipal>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Posts.DeleteAsync(It.IsAny<Post>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<ForbiddenException>(() => _postService.DeletePostAsync(post.PostId, GetClaims(another.Id), CancellationToken.None));
         }
 
         [Fact]
@@ -249,10 +239,7 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Post)null!);
 
-            await _postService.DeletePostAsync(999, GetClaims(user.Id), CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Post>(), It.IsAny<ClaimsPrincipal>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Posts.DeleteAsync(It.IsAny<Post>(), It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _postService.DeletePostAsync(999, GetClaims(user.Id), CancellationToken.None));
         }
     }
 }

@@ -6,6 +6,7 @@ using PodcastBlog.Application.ModelsDto.User;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services
@@ -29,44 +30,31 @@ namespace PodcastBlog.Application.Services
 
         public async Task<PagedList<UserDto>> GetAllUsersPagedAsync(Parameters parameters, CancellationToken cancellationToken)
         {
-            try
-            {
-                var users = await _unitOfWork.Users.GetAllUsersPagedAsync(parameters, cancellationToken);
+            var users = await _unitOfWork.Users.GetAllUsersPagedAsync(parameters, cancellationToken);
 
-                var usersDto = _mapper.Map<IEnumerable<UserDto>>(users).ToList();
+            var usersDto = _mapper.Map<IEnumerable<UserDto>>(users).ToList();
 
-                _logger.LogInformation("Список пользователей успешно получен");
-                return new PagedList<UserDto>(usersDto, users.MetaData.TotalCount, users.MetaData.CurrentPage, users.MetaData.PageSize);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при получении списка пользователей");
-                throw;
-            }
+            _logger.LogInformation("Список пользователей успешно получен");
+
+            return new PagedList<UserDto>(usersDto, users.MetaData.TotalCount, users.MetaData.CurrentPage, users.MetaData.PageSize);
         }
 
         public async Task<UserDto> GetUserByIdAsync(int id, CancellationToken cancellationToken)
         {
-            try
+            var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
+
+            if (user is null)
             {
-                var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
+                _logger.LogWarning("Получение. Пользователь не найден");
 
-                if (user is null)
-                {
-                    _logger.LogWarning("Получение. Пользователь не найден");
-                    return null;
-                }
-
-                var userDto = _mapper.Map<UserDto>(user);
-
-                _logger.LogInformation("Пользователь успешно получен");
-                return userDto;
+                throw new NotFoundException("Пользователь не найден");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при получении пользователя");
-                throw;
-            }
+
+            var userDto = _mapper.Map<UserDto>(user);
+
+            _logger.LogInformation("Пользователь успешно получен");
+
+            return userDto;
         }
 
         public async Task UpdateUserAsync(UpdateUserDto updateUserDto, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
@@ -78,16 +66,18 @@ namespace PodcastBlog.Application.Services
             if (user is null)
             {
                 _logger.LogWarning("Обновление. Пользователь не найден");
-                return;
-            }
 
-            _mapper.Map(updateUserDto, user);
+                throw new NotFoundException("Пользователь не найден");
+            }
 
             if (userId != user.Id)
             {
                 _logger.LogWarning("Профиль изменить может только создатель");
-                return;
+
+                throw new ForbiddenException("Профиль изменить может только создатель");
             }
+
+            _mapper.Map(updateUserDto, user);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -101,7 +91,8 @@ namespace PodcastBlog.Application.Services
             if (user is null)
             {
                 _logger.LogWarning("Изменение роли. Пользователь не найден");
-                return;
+
+                throw new NotFoundException("Пользователь не найден");
             }
 
             user.Role = updateUserRoleDto.Role;
@@ -113,128 +104,131 @@ namespace PodcastBlog.Application.Services
 
         public async Task DeleteUserAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            try
+
+            var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
+
+            if (user is null)
             {
-                var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
+                _logger.LogWarning("Удаление. Пользователь не найден");
 
-                if (user is null)
-                {
-                    _logger.LogWarning("Удаление. Пользователь не найден");
-                    return;
-                }
-
-                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
-
-                if (userId != user.Id && user.Role != UserRole.Administrator)
-                {
-                    _logger.LogWarning("Профиль удалить может только создатель или администатор");
-                    return;
-                }
-
-                await _cleanup.CleanupAsync(user, userPrincipal, cancellationToken);
-
-                await _unitOfWork.Users.DeleteAsync(user, cancellationToken);
-
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-                _logger.LogInformation("Пользователь успешно удален");
+                throw new NotFoundException("Пользователь не найден");
             }
-            catch (Exception ex)
+
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+            if (userId != user.Id && user.Role != UserRole.Administrator)
             {
-                _logger.LogError(ex, "Ошибка при удалении пользователя");
-                throw;
+                _logger.LogWarning("Профиль удалить может только создатель или администатор");
+
+                throw new ForbiddenException("Профиль удалить может только создатель или администатор");
             }
+
+            await _cleanup.CleanupAsync(user, userPrincipal, cancellationToken);
+
+            await _unitOfWork.Users.DeleteAsync(user, cancellationToken);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Пользователь успешно удален");
         }
 
         public async Task SubscriptionAsync(int authorId, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            try
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int subscriberId);
+
+            if (subscriberId == authorId)
             {
-                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int subscriberId);
+                _logger.LogWarning("Попытка подписки на самого себя");
 
-                if (subscriberId == authorId)
-                {
-                    _logger.LogWarning("Попытка подписки на самого себя");
-                    return;
-                }
-
-                var subscriber = await _unitOfWork.Users.GetByIdAsync(subscriberId, cancellationToken);
-
-                var author = await _unitOfWork.Users.GetByIdAsync(authorId, cancellationToken);
-
-                var subscription = subscriber.Subscriptions.FirstOrDefault(s => s.AuthorId == authorId);
-
-                if (subscription is not null)
-                {
-                    subscriber.Subscriptions.Remove(subscription);
-                    var reverse = author.Followers.FirstOrDefault(s => s.SubscriberId == subscriberId);
-
-                    if (reverse is not null)
-                    {
-                        author.Followers.Remove(reverse);
-                    }
-
-                    _logger.LogInformation("Отписка произведена успешно");
-                }
-                else
-                {
-                    var newSubscription = new UserSubscription
-                    {
-                        SubscriberId = subscriberId,
-                        AuthorId = authorId
-                    };
-
-                    subscriber.Subscriptions.Add(newSubscription);
-                    author.Followers.Add(newSubscription);
-
-                    await _notificationService.NewSubscriberNotificationAsync(subscriberId, authorId, cancellationToken);
-                    _logger.LogInformation("Подписка произведена успешно");
-                }
-
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                throw new ForbiddenException("Нельзя подписаться на самого себя");
             }
-            catch (Exception ex)
+
+            var subscriber = await _unitOfWork.Users.GetByIdAsync(subscriberId, cancellationToken);
+
+            var author = await _unitOfWork.Users.GetByIdAsync(authorId, cancellationToken);
+
+            if (subscriber is null || author is null)
             {
-                _logger.LogError(ex, "Ошибка при попытке подписки/отписки");
-                throw;
+                _logger.LogWarning("Один из пользователей не найден");
+
+                throw new NotFoundException("Один из пользователей не найден");
             }
+
+            var subscription = subscriber.Subscriptions.FirstOrDefault(s => s.AuthorId == authorId);
+
+            if (subscription is not null)
+            {
+                subscriber.Subscriptions.Remove(subscription);
+                var reverse = author.Followers.FirstOrDefault(s => s.SubscriberId == subscriberId);
+
+                if (reverse is not null)
+                {
+                    author.Followers.Remove(reverse);
+                }
+
+                _logger.LogInformation("Отписка произведена успешно");
+            }
+            else
+            {
+                var newSubscription = new UserSubscription
+                {
+                    SubscriberId = subscriberId,
+                    AuthorId = authorId
+                };
+
+                subscriber.Subscriptions.Add(newSubscription);
+                author.Followers.Add(newSubscription);
+
+                await _notificationService.NewSubscriberNotificationAsync(subscriberId, authorId, cancellationToken);
+
+                _logger.LogInformation("Подписка произведена успешно");
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         public async Task PostLikeAsync(int postId, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            try
+            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+            var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+
+            if (user is null)
             {
-                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+                _logger.LogWarning("Лайк. Пользователь не найден");
 
-                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
-                var post = await _unitOfWork.Posts.GetByIdAsync(postId, cancellationToken);
-
-                var alreadyLiked = post.Likes.Any(u => u.Id == userId);
-
-                if (alreadyLiked)
-                {
-                    post.Likes.Remove(user);
-                    user.Liked.Remove(post);
-
-                    _logger.LogInformation("Лайк успешно удален");
-                }
-                else
-                {
-                    post.Likes.Add(user);
-                    user.Liked.Add(post);
-
-                    await _notificationService.NewLikeNotificationAsync(userId, post, cancellationToken);
-
-                    _logger.LogInformation("Лайк успешно добавлен");
-                }
-
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                throw new NotFoundException("Пользователь не найден");
             }
-            catch (Exception ex)
+
+            var post = await _unitOfWork.Posts.GetByIdAsync(postId, cancellationToken);
+
+            if (post is null)
             {
-                _logger.LogError(ex, "Ошибка при добавлении/удалении лайка");
-                throw;
+                _logger.LogWarning("Лайк. Пост не найден");
+
+                throw new NotFoundException("Пост не найден");
             }
+
+            var alreadyLiked = post.Likes.Any(u => u.Id == userId);
+
+            if (alreadyLiked)
+            {
+                post.Likes.Remove(user);
+                user.Liked.Remove(post);
+
+                _logger.LogInformation("Лайк успешно удален");
+            }
+            else
+            {
+                post.Likes.Add(user);
+                user.Liked.Add(post);
+
+                await _notificationService.NewLikeNotificationAsync(userId, post, cancellationToken);
+
+                _logger.LogInformation("Лайк успешно добавлен");
+            }
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }

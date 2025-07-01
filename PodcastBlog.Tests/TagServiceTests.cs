@@ -8,6 +8,7 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
+using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 
 namespace PodcastBlog.Tests
@@ -70,9 +71,7 @@ namespace PodcastBlog.Tests
         {
             _unitOfWorkMock.Setup(u => u.Tags.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Tag)null!);
 
-            var result = await _tagService.GetTagByIdAsync(999, CancellationToken.None);
-
-            Assert.Null(result);
+            await Assert.ThrowsAsync<NotFoundException>(() => _tagService.GetTagByIdAsync(999, CancellationToken.None));
         }
 
         [Fact]
@@ -108,11 +107,7 @@ namespace PodcastBlog.Tests
         {
             _unitOfWorkMock.Setup(u => u.Tags.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((Tag)null!);
 
-            await _tagService.DeleteTagAsync(999, CancellationToken.None);
-
-            _cleanupMock.Verify(c => c.CleanupAsync(It.IsAny<Tag>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.Tags.DeleteAsync(It.IsAny<Tag>(), It.IsAny<CancellationToken>()), Times.Never);
-            _unitOfWorkMock.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+            await Assert.ThrowsAsync<NotFoundException>(() => _tagService.DeleteTagAsync(999, CancellationToken.None));
         }
 
         [Fact]
