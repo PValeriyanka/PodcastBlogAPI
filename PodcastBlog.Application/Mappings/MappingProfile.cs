@@ -46,7 +46,11 @@ namespace PodcastBlog.Application.Mappings
                 .ForMember(dest => dest.PostsCount, opt => opt.MapFrom(src => src.Posts.Count))
                 .ForMember(dest => dest.FollowersCount, opt => opt.MapFrom(src => src.Followers.Count))
                 .ForMember(dest => dest.SubscriptionsCount, opt => opt.MapFrom(src => src.Subscriptions.Count));
-            CreateMap<UpdateUserDto, User>().ForAllMembers(opt => opt.Condition((src, _, val) => val != null));
+            CreateMap<UpdateUserDto, User>()
+                .ForMember(dest => dest.UserName, opt => opt.Ignore())
+                .ForMember(dest => dest.Email, opt => opt.Ignore())
+                .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
+                .ForAllMembers(opt => opt.Condition((src, _, val) => val != null));
         }
     }
 }

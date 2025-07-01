@@ -72,6 +72,8 @@ namespace PodcastBlog.Server
 
             builder.Services.AddScoped<IAuthService, AuthService>();
 
+            builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
             builder.Services.AddAutoMapper(typeof(MappingProfile));
 
             builder.Services.AddScoped<GlobalExceptionFilter>();

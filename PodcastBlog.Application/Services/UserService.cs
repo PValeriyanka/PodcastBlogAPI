@@ -116,7 +116,9 @@ namespace PodcastBlog.Application.Services
 
             int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
-            if (userId != user.Id && user.Role != UserRole.Administrator)
+            var us = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+            
+            if (userId != user.Id && us.Role != UserRole.Administrator)
             {
                 _logger.LogWarning("Профиль удалить может только создатель или администатор");
 
