@@ -14,7 +14,7 @@ namespace PodcastBlog.Application.Services
             _logger = logger;
         }
 
-        public async Task<string?> GetCoverImageAsync(IFormFile? cover, CancellationToken cancellationToken)
+        public async Task<string?> GetCoverImageAsync(IFormFile cover, CancellationToken cancellationToken)
         {
             if (cover is null)
             {
@@ -43,7 +43,7 @@ namespace PodcastBlog.Application.Services
             }
         }
 
-        public async Task<(string path, int duration, int bitrate, string transcription)> GetAudioMetadataAsync(IFormFile? audio, CancellationToken cancellationToken)
+        public async Task<(string path, int duration, int bitrate, string transcription)> GetAudioMetadataAsync(IFormFile audio, CancellationToken cancellationToken)
         {
             if (audio is null)
             {

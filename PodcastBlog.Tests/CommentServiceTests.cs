@@ -202,7 +202,6 @@ namespace PodcastBlog.Tests
 
             _unitOfWorkMock.Setup(u => u.Comments.GetByIdAsync(comment.CommentId, It.IsAny<CancellationToken>())).ReturnsAsync(comment);
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-            _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(another.Id, It.IsAny<CancellationToken>())).ReturnsAsync(another);
 
             await Assert.ThrowsAsync<ForbiddenException>(() => _commentService.DeleteCommentAsync(comment.CommentId, GetClaims(another.Id), CancellationToken.None));
         }

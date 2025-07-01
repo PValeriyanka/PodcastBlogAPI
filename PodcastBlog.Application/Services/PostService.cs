@@ -7,7 +7,6 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using PodcastBlog.Domain.Parameters.ModelParameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services
@@ -33,147 +32,170 @@ namespace PodcastBlog.Application.Services
 
         public async Task<PagedList<PostDto>> GetPostsPagedAsync(PostParameters parameters, ClaimsPrincipal userPrincipal, string? type, CancellationToken cancellationToken)
         {
-            var now = DateTime.UtcNow;
-
-            var sheduledPosts = await _unitOfWork.Posts.GetSheduledPostsAsync(cancellationToken);
-
-            foreach (var post in sheduledPosts)
+            try
             {
-                post.Status = PostStatus.Published;
+                var now = DateTime.UtcNow;
 
-                await _notificationService.CreatePostNotificationAsync(post.AuthorId, cancellationToken);
+                var sheduledPosts = await _unitOfWork.Posts.GetSheduledPostsAsync(cancellationToken);
+
+                foreach (var post in sheduledPosts)
+                {
+                    post.Status = PostStatus.Published;
+
+                    await _notificationService.CreatePostNotificationAsync(post.AuthorId, cancellationToken);
+                }
+
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int Id);
+
+                var currentUser = await _unitOfWork.Users.GetByIdAsync(Id, cancellationToken);
+
+                var posts = await _unitOfWork.Posts.GetPostsPagedAsync(parameters, currentUser, type, cancellationToken);
+
+                var postsDto = _mapper.Map<IEnumerable<PostDto>>(posts).ToList();
+
+                _logger.LogInformation("Посты успешно загружены");
+                return new PagedList<PostDto>(postsDto, posts.MetaData.TotalCount, posts.MetaData.CurrentPage, posts.MetaData.PageSize);
             }
-
-            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int Id);
-
-            var currentUser = await _unitOfWork.Users.GetByIdAsync(Id, cancellationToken);
-
-            var posts = await _unitOfWork.Posts.GetPostsPagedAsync(parameters, currentUser, type, cancellationToken);
-
-            var postsDto = _mapper.Map<IEnumerable<PostDto>>(posts).ToList();
-
-            _logger.LogInformation("Посты успешно загружены");
-
-            return new PagedList<PostDto>(postsDto, posts.MetaData.TotalCount, posts.MetaData.CurrentPage, posts.MetaData.PageSize);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении постов");
+                throw;
+            }
         }
 
         public async Task<PostDto> GetPostByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
-
-            if (post is null)
+            try
             {
-                _logger.LogWarning("Просмотр. Пост не найден");
+                var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
 
-                throw new NotFoundException("Пост не найден");
+                if (post is null)
+                {
+                    _logger.LogWarning("Просмотр. Пост не найден");
+                    return null;
+                }
+
+                post.Views += 1;
+
+                var postDto = _mapper.Map<PostDto>(post);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Просмотр поста успешно засчитан");
+                return postDto;
             }
-
-            post.Views += 1;
-
-            var postDto = _mapper.Map<PostDto>(post);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Просмотр поста успешно засчитан");
-
-            return postDto;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении поста");
+                throw;
+            }
         }
 
         public async Task CreatePostAsync(CreatePostDto createPostDto, ClaimsPrincipal userPrincipal, string status, CancellationToken cancellationToken)
         {
-            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int authorId);
-
-            if (createPostDto.PodcastId is not null)
+            try
             {
-                var podcast = await _unitOfWork.Podcasts.GetByIdAsync(createPostDto.PodcastId.Value, cancellationToken);
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int authorId);
 
-                if (podcast is null)
-                {
-                    createPostDto.PodcastId = null;
-                }
+                var post = _mapper.Map<Post>(createPostDto);
+                post.AuthorId = authorId;
+
+                await ApplyStatus(post, status, userPrincipal, cancellationToken);
+
+                post.Tags = await _tagService.ResolveTagsFromStringAsync(createPostDto.Tags, cancellationToken);
+
+                await _unitOfWork.Posts.CreateAsync(post, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Пост успешно создан");
             }
-
-            var post = _mapper.Map<Post>(createPostDto);
-            post.AuthorId = authorId;
-
-            await ApplyStatus(post, status, userPrincipal, cancellationToken);
-
-            post.Tags = await _tagService.ResolveTagsFromStringAsync(createPostDto.Tags, cancellationToken);
-
-            await _unitOfWork.Posts.CreateAsync(post, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Пост успешно создан");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании поста");
+                throw;
+            }
         }
 
         public async Task UpdatePostAsync(UpdatePostDto updatePostDto, ClaimsPrincipal userPrincipal, string? status, CancellationToken cancellationToken)
         {
-            var post = await _unitOfWork.Posts.GetByIdAsync(updatePostDto.PostId, cancellationToken);
-
-            if (post is null)
+            try
             {
-                _logger.LogWarning("Обновление. Пост не найден");
+                var post = await _unitOfWork.Posts.GetByIdAsync(updatePostDto.PostId, cancellationToken);
 
-                throw new NotFoundException("Пост не найден");
+                if (post is null)
+                {
+                    _logger.LogWarning("Обновление. Пост не найден");
+                    return;
+                }
+
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+
+                if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+                {
+                    _logger.LogWarning("Пост изменить может только автор или администратор");
+                    return;
+                }
+
+                _mapper.Map(updatePostDto, post);
+
+                if (status is not null)
+                {
+                    await ApplyStatus(post, status, userPrincipal, cancellationToken);
+                }
+
+                post.Tags = await _tagService.ResolveTagsFromStringAsync(updatePostDto.Tags, cancellationToken);
+
+                await _unitOfWork.Posts.UpdateAsync(post, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Пост успешно обновлен");
             }
-
-            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
-
-            var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
-
-            if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+            catch (Exception ex)
             {
-                _logger.LogWarning("Пост изменить может только автор или администратор");
-
-                throw new ForbiddenException("Пост изменить может только автор или администратор");
+                _logger.LogError(ex, "Ошибка при обновлении поста");
+                throw;
             }
-
-            _mapper.Map(updatePostDto, post);
-
-            if (status is not null)
-            {
-                await ApplyStatus(post, status, userPrincipal, cancellationToken);
-            }
-
-            post.Tags = await _tagService.ResolveTagsFromStringAsync(updatePostDto.Tags, cancellationToken);
-
-            await _unitOfWork.Posts.UpdateAsync(post, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Пост успешно обновлен");
         }
 
         public async Task DeletePostAsync(int id, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
         {
-            var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
-
-            if (post is null)
+            try
             {
-                _logger.LogWarning("Удаление. Пост не найден");
+                var post = await _unitOfWork.Posts.GetByIdAsync(id, cancellationToken);
 
-                throw new NotFoundException("Пост не найден");
+                if (post is null)
+                {
+                    _logger.LogWarning("Удаление. Пост не найден");
+                    return;
+                }
+
+                int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
+
+                var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+
+                if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+                {
+                    _logger.LogWarning("Пост удалить может только автор или администратор");
+                    return;
+                }
+
+                await _cleanup.CleanupAsync(post, userPrincipal, cancellationToken);
+
+                await _unitOfWork.Posts.DeleteAsync(post, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Пост успешно удален");
             }
-
-            int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
-
-            var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
-
-            if (userId != post.AuthorId && user.Role != UserRole.Administrator)
+            catch (Exception ex)
             {
-                _logger.LogWarning("Пост удалить может только автор или администратор");
-
-                throw new ForbiddenException("Пост удалить может только автор или администратор");
+                _logger.LogError(ex, "Ошибка при удалении поста");
+                throw;
             }
-
-            await _cleanup.CleanupAsync(post, userPrincipal, cancellationToken);
-
-            await _unitOfWork.Posts.DeleteAsync(post, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Пост успешно удален");
         }
 
         private async Task ApplyStatus(Post post, string status, ClaimsPrincipal userPrincipal, CancellationToken cancellationToken)
@@ -205,6 +227,7 @@ namespace PodcastBlog.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при установке статуса поста");
+                throw;
             }
         }
     }

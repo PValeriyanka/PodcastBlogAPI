@@ -6,7 +6,6 @@ using PodcastBlog.Application.ModelsDto.Tag;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 
 namespace PodcastBlog.Application.Services
 {
@@ -27,99 +26,135 @@ namespace PodcastBlog.Application.Services
 
         public async Task<PagedList<TagDto>> GetAllTagsPagedAsync(Parameters parameters, CancellationToken cancellationToken)
         {
-            var tags = await _unitOfWork.Tags.GetAllTagsPagedAsync(parameters, cancellationToken);
+            try
+            {
+                var tags = await _unitOfWork.Tags.GetAllTagsPagedAsync(parameters, cancellationToken);
 
-            var tagsDto = _mapper.Map<IEnumerable<TagDto>>(tags).ToList();
+                var tagsDto = _mapper.Map<IEnumerable<TagDto>>(tags).ToList();
 
-            _logger.LogInformation("Теги успешно получены");
-
-            return new PagedList<TagDto>(tagsDto, tags.MetaData.TotalCount, tags.MetaData.CurrentPage, tags.MetaData.PageSize);
+                _logger.LogInformation("Теги успешно получены");
+                return new PagedList<TagDto>(tagsDto, tags.MetaData.TotalCount, tags.MetaData.CurrentPage, tags.MetaData.PageSize);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении тегов");
+                throw;
+            }
         }
 
         public async Task<TagDto> GetTagByIdAsync(int id, CancellationToken cancellationToken)
         {
-            var tag = await _unitOfWork.Tags.GetByIdAsync(id, cancellationToken);
-
-            if (tag is null)
+            try
             {
-                _logger.LogWarning("Получение. Тег не найден");
+                var tag = await _unitOfWork.Tags.GetByIdAsync(id, cancellationToken);
 
-                throw new NotFoundException("Тег не найден");
+                if (tag is null)
+                {
+                    _logger.LogWarning("Получение. Тег не найден");
+                    return null;
+                }
+
+                var tagDto = _mapper.Map<TagDto>(tag);
+
+                _logger.LogInformation("Тег успешно получен");
+                return tagDto;
             }
-
-            var tagDto = _mapper.Map<TagDto>(tag);
-
-            _logger.LogInformation("Тег успешно получен");
-
-            return tagDto;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении тега");
+                throw;
+            }
         }
 
         public async Task CreateTagAsync(CreateTagDto createTagDto, CancellationToken cancellationToken)
         {
-            var tag = _mapper.Map<Tag>(createTagDto);
+            try
+            {
+                var tag = _mapper.Map<Tag>(createTagDto);
 
-            await _unitOfWork.Tags.CreateAsync(tag, cancellationToken);
+                await _unitOfWork.Tags.CreateAsync(tag, cancellationToken);
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Тег успешно создан");
+                _logger.LogInformation("Тег успешно создан");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании тега");
+                throw;
+            }
         }
 
         public async Task DeleteTagAsync(int id, CancellationToken cancellationToken)
         {
-            var tag = await _unitOfWork.Tags.GetByIdAsync(id, cancellationToken);
-
-            if (tag is null)
+            try
             {
-                _logger.LogWarning("Удаление. Тег не найден");
+                var tag = await _unitOfWork.Tags.GetByIdAsync(id, cancellationToken);
 
-                throw new NotFoundException("Тег не найден");
+                if (tag is null)
+                {
+                    _logger.LogWarning("Удаление. Тег не найден");
+                    return;
+                }
+
+                await _cleanup.CleanupAsync(tag, cancellationToken);
+
+                await _unitOfWork.Tags.DeleteAsync(tag, cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Тег успешно удален");
             }
-
-            await _cleanup.CleanupAsync(tag, cancellationToken);
-
-            await _unitOfWork.Tags.DeleteAsync(tag, cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Тег успешно удален");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении тега");
+                throw;
+            }
         }
 
         public async Task<List<Tag>> ResolveTagsFromStringAsync(string? tags, CancellationToken cancellationToken)
         {
             var result = new List<Tag>();
 
-            if (!string.IsNullOrWhiteSpace(tags))
+            try
             {
-                var tagNames = tags
-                    .Split(new[] { '#', ' ', ',', '.', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(t => t.Trim())
-                    .Where(t => !string.IsNullOrWhiteSpace(t))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-
-                foreach (var name in tagNames)
+                if (!string.IsNullOrWhiteSpace(tags))
                 {
-                    var tag = await _unitOfWork.Tags.GetTagByNameAsync(name, cancellationToken);
+                    var tagNames = tags
+                        .Split(new[] { '#', ' ', ',', '.', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(t => t.Trim())
+                        .Where(t => !string.IsNullOrWhiteSpace(t))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
 
-                    if (tag is not null)
+                    foreach (var name in tagNames)
                     {
-                        result.Add(tag);
-                    }
-                    else
-                    {
-                        var newTag = new Tag { Name = name };
+                        var tag = await _unitOfWork.Tags.GetTagByNameAsync(name, cancellationToken);
 
-                        await _unitOfWork.Tags.CreateAsync(newTag, cancellationToken);
+                        if (tag is not null)
+                        {
+                            result.Add(tag);
+                        }
+                        else
+                        {
+                            var newTag = new Tag { Name = name };
 
-                        result.Add(newTag);
+                            await _unitOfWork.Tags.CreateAsync(newTag, cancellationToken);
 
-                        _logger.LogInformation("Новый тег успешно создан");
+                            result.Add(newTag);
+
+                            _logger.LogInformation("Новый тег успешно создан");
+                        }
                     }
                 }
-            }
 
-            return result;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обработке строки тегов");
+                throw;
+            }
         }
     }
 }

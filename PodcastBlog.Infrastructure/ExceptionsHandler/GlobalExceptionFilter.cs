@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PodcastBlog.Infrastructure.ExceptionsHandler
 {
-    public class GlobalExceptionFilter : IAsyncExceptionFilter
+    public class GlobalExceptionFilter : IExceptionFilter
     {
         private readonly ILogger<GlobalExceptionFilter> _logger;
 
@@ -16,7 +16,7 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
             _logger = logger;
         }
 
-        public Task OnExceptionAsync(ExceptionContext context)
+        public void OnException(ExceptionContext context)
         {
             var ex = context.Exception;
 
@@ -27,7 +27,7 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
                 NotFoundException => new ObjectResult(new { message = ex.Message }) { StatusCode = 404 },
                 ForbiddenException => new ObjectResult(new { message = ex.Message }) { StatusCode = 403 },
                 AuthException => new ObjectResult(new { message = ex.Message }) { StatusCode = 409 },
-                MediaException => new ObjectResult(new { message = ex.Message }) { StatusCode = 422 },
+                MediaException => new ObjectResult(new {message = ex.Message}) { StatusCode = 422},
 
                 DbUpdateException => new ObjectResult(new { message = "Ошибка базы данных" }) { StatusCode = 409 },
                 ValidationException => new ObjectResult(new { message = ex.Message }) { StatusCode = 422 },
@@ -39,8 +39,6 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
 
             context.Result = response;
             context.ExceptionHandled = true;
-
-            return Task.CompletedTask;
         }
     }
 }

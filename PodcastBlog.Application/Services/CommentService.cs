@@ -61,17 +61,14 @@ namespace PodcastBlog.Application.Services
         {
             int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
-            if (createCommentDto.ParentId is not null)
-            {
-                var comm = await _unitOfWork.Comments.GetByIdAsync(createCommentDto.ParentId.Value, cancellationToken);
+            var comment = _mapper.Map<Comment>(createCommentDto);
+            comment.UserId = userId;
+            comment.Status = CommentStatus.Pending;
+            comment.CreatedAt = DateTime.UtcNow;
 
-                if (comm is null)
-                {
-                    createCommentDto.ParentId = null;
-                }
-            }
+            await _unitOfWork.Comments.CreateAsync(comment, cancellationToken);
 
-            var post = await _unitOfWork.Posts.GetByIdAsync(createCommentDto.PostId, cancellationToken);
+            var post = await _unitOfWork.Posts.GetByIdAsync(comment.PostId, cancellationToken);
 
             if (post is null)
             {
@@ -79,13 +76,6 @@ namespace PodcastBlog.Application.Services
 
                 throw new NotFoundException("Пост не найден");
             }
-
-            var comment = _mapper.Map<Comment>(createCommentDto);
-            comment.UserId = userId;
-            comment.Status = CommentStatus.Pending;
-            comment.CreatedAt = DateTime.UtcNow;
-
-            await _unitOfWork.Comments.CreateAsync(comment, cancellationToken);
 
             await _notificationService.NewCommentNotificationAsync(comment, post, cancellationToken);
 
@@ -135,7 +125,7 @@ namespace PodcastBlog.Application.Services
 
             int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
-            var user = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
+            var user = await _unitOfWork.Users.GetByIdAsync(id, cancellationToken);
 
             if (userId != comment.Post.AuthorId && userId != comment.UserId && user.Role != UserRole.Administrator)
             {

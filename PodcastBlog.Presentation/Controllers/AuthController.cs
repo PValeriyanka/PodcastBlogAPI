@@ -20,46 +20,25 @@ namespace PodcastBlog.Presentation.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto, CancellationToken cancellationToken)
         {
-            try
-            {
-                var token = await _authService.AuthenticateAsync(loginDto.Email, loginDto.Password, cancellationToken);
+            var token = await _authService.AuthenticateAsync(loginDto.Email, loginDto.Password, cancellationToken);
 
-                return Ok(new { token });
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return Ok(new { token });
         }
 
         // POST: api/auth/registration
         [HttpPost("registration")]
         public async Task<IActionResult> Register([FromBody] RegistrationDto registrationDto, CancellationToken cancellationToken)
         {
-            try
-            {
-                var result = await _authService.RegisterAsync(registrationDto, cancellationToken);
+            var result = await _authService.RegisterAsync(registrationDto, cancellationToken);
 
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return Ok();
         }
 
         [Authorize]
         [HttpPost("logout")]
         public IActionResult Logout()
         {
-            try
-            {
-                return Redirect("/");
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            return Redirect("/");
         }
     }
 }
