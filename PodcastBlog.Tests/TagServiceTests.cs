@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Moq;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.Tag;
 using PodcastBlog.Application.Services;
@@ -8,7 +9,6 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 
 namespace PodcastBlog.Tests

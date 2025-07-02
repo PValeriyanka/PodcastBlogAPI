@@ -1,4 +1,4 @@
-﻿namespace PodcastBlog.Infrastructure.Authentication
+﻿namespace PodcastBlog.Infrastructure.Authentication.Options
 {
     public class JwtOptions
     {

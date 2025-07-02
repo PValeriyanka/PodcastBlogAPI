@@ -1,4 +1,4 @@
-﻿namespace PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions
+﻿namespace PodcastBlog.Application.Exceptions
 {
     public class NotFoundException : Exception
     {

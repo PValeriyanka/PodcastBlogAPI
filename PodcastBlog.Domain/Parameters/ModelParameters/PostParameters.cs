@@ -7,7 +7,7 @@
         public string? searchByContent { get; set; }
         public string? searchByTags { get; set; }
         public int? searchByDuring { get; set; }
-        
+
         public string sortBy { get; set; } = "DateDown";
     }
 }

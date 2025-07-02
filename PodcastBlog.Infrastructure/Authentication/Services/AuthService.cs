@@ -2,16 +2,16 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.ModelsDto.Authentication;
 using PodcastBlog.Domain.Models;
-using PodcastBlog.Infrastructure.Authentication;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
+using PodcastBlog.Infrastructure.Authentication.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace PodcastBlog.Application.Services
+namespace PodcastBlog.Infrastructure.Authentication.Services
 {
     public class AuthService : IAuthService
     {

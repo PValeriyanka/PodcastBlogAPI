@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Moq;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.Post;
@@ -10,7 +11,6 @@ using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
 using PodcastBlog.Domain.Parameters.ModelParameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -54,7 +54,7 @@ namespace PodcastBlog.Tests
             var publishedPost = TestData.Post;
             var scheduledPosts = new List<Post> { scheduledPost };
             var paged = new PagedList<Post>(new List<Post> { publishedPost }, 1, 1, 10);
-            var pagedDtos = new List<PostDto> { new() { PostId = publishedPost.PostId, Title = publishedPost.Title } };
+            var pagedDtos = new List<PostDto> { new() { PostId = publishedPost.PostId, Title = publishedPost.Title, Content = publishedPost.Content, AuthorName = publishedPost.Author.Name } };
 
             _unitOfWorkMock.Setup(u => u.Posts.GetSheduledPostsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(scheduledPosts);
             _notificationServiceMock.Setup(n => n.CreatePostNotificationAsync(scheduledPost.AuthorId, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -77,7 +77,7 @@ namespace PodcastBlog.Tests
             var post = TestData.Post;
 
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(post.PostId, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-            _mapperMock.Setup(m => m.Map<PostDto>(post)).Returns(new PostDto { Title = post.Title });
+            _mapperMock.Setup(m => m.Map<PostDto>(post)).Returns(new PostDto { Title = post.Title, AuthorName = post.Author.Name });
 
             var result = await _postService.GetPostByIdAsync(post.PostId, CancellationToken.None);
 
@@ -93,7 +93,7 @@ namespace PodcastBlog.Tests
             int initialViews = post.Views;
 
             _unitOfWorkMock.Setup(u => u.Posts.GetByIdAsync(post.PostId, It.IsAny<CancellationToken>())).ReturnsAsync(post);
-            _mapperMock.Setup(m => m.Map<PostDto>(post)).Returns(new PostDto { Title = post.Title });
+            _mapperMock.Setup(m => m.Map<PostDto>(post)).Returns(new PostDto { Title = post.Title, AuthorName = post.Author.Name });
 
             await _postService.GetPostByIdAsync(post.PostId, CancellationToken.None);
 

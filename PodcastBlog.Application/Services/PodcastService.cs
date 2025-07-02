@@ -1,11 +1,11 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.Podcast;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services

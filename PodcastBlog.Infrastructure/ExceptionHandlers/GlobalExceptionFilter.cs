@@ -2,10 +2,10 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
+using PodcastBlog.Application.Exceptions;
 using System.ComponentModel.DataAnnotations;
 
-namespace PodcastBlog.Infrastructure.ExceptionsHandler
+namespace PodcastBlog.Infrastructure.ExceptionHandlers
 {
     public class GlobalExceptionFilter : IAsyncExceptionFilter
     {
@@ -21,7 +21,7 @@ namespace PodcastBlog.Infrastructure.ExceptionsHandler
             var ex = context.Exception;
 
             _logger.LogError(ex, "Обработано глобальное исключение");
-            
+
             var response = ex switch
             {
                 NotFoundException => new ObjectResult(new { message = ex.Message }) { StatusCode = 404 },

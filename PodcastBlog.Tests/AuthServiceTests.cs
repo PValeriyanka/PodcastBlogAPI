@@ -2,13 +2,12 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.ModelsDto.Authentication;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
-using PodcastBlog.Application.Services;
 using PodcastBlog.Domain.Models;
-using PodcastBlog.Infrastructure.Authentication;
+using PodcastBlog.Infrastructure.Authentication.Options;
+using PodcastBlog.Infrastructure.Authentication.Services;
 using PodcastBlog.Tests.TestUtils;
-using System.Security.Authentication;
 
 namespace PodcastBlog.Tests
 {

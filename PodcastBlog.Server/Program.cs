@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,12 +9,14 @@ using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.Mappings;
 using PodcastBlog.Application.Services;
 using PodcastBlog.Application.Strategies;
+using PodcastBlog.Application.Validators.Post;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Infrastructure;
-using PodcastBlog.Infrastructure.Authentication;
-using PodcastBlog.Infrastructure.ExceptionsHandler;
+using PodcastBlog.Infrastructure.Authentication.Options;
+using PodcastBlog.Infrastructure.Authentication.Services;
+using PodcastBlog.Infrastructure.ExceptionHandlers;
 using PodcastBlog.Infrastructure.Repositories;
 using System.Text;
 
@@ -82,6 +85,8 @@ namespace PodcastBlog.Server
             {
                 options.Filters.Add<GlobalExceptionFilter>();
             }).AddDataAnnotationsLocalization();
+
+            builder.Services.AddValidatorsFromAssemblyContaining<CreatePostDtoValidator>();
 
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                     .AddEntityFrameworkStores<PodcastBlogContext>()

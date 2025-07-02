@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Moq;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.Podcast;
@@ -9,7 +10,6 @@ using PodcastBlog.Application.Services;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -50,7 +50,7 @@ namespace PodcastBlog.Tests
             var podcast = TestData.Podcast;
 
             _unitOfWorkMock.Setup(u => u.Podcasts.GetByIdAsync(podcast.PodcastId, It.IsAny<CancellationToken>())).ReturnsAsync(podcast);
-            _mapperMock.Setup(m => m.Map<PodcastDto>(podcast)).Returns(new PodcastDto { Title = podcast.Title });
+            _mapperMock.Setup(m => m.Map<PodcastDto>(podcast)).Returns(new PodcastDto { Title = podcast.Title, AudioFile = podcast.AudioFile });
 
             var result = await _podcastService.GetPodcastByIdAsync(podcast.PodcastId, CancellationToken.None);
 

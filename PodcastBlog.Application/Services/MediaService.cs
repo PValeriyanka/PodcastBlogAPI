@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 
 namespace PodcastBlog.Application.Services
 {

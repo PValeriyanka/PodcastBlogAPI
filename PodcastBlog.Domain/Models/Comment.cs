@@ -19,7 +19,7 @@
 
     public enum CommentStatus
     {
-        Pending,       
-        Approved         
+        Pending,
+        Approved
     }
 }

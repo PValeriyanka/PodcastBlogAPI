@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Moq;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.User;
@@ -9,7 +10,6 @@ using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Interfaces.Repositories;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using PodcastBlog.Tests.TestUtils;
 using System.Security.Claims;
 
@@ -49,7 +49,7 @@ namespace PodcastBlog.Tests
             var paged = new PagedList<User>(new List<User> { user }, 1, 1, 10);
 
             _unitOfWorkMock.Setup(u => u.Users.GetAllUsersPagedAsync(It.IsAny<Parameters>(), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
-            _mapperMock.Setup(m => m.Map<IEnumerable<UserDto>>(paged)).Returns(new List<UserDto> { new() { UserId = user.Id } });
+            _mapperMock.Setup(m => m.Map<IEnumerable<UserDto>>(paged)).Returns(new List<UserDto> { new() { UserId = user.Id, Email = user.Email, Name = user.Name } });
 
             var result = await _userService.GetAllUsersPagedAsync(new Parameters(), CancellationToken.None);
 
@@ -63,7 +63,7 @@ namespace PodcastBlog.Tests
             var user = TestData.User;
 
             _unitOfWorkMock.Setup(u => u.Users.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
-            _mapperMock.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { UserId = user.Id });
+            _mapperMock.Setup(m => m.Map<UserDto>(user)).Returns(new UserDto { UserId = user.Id, Email = user.Email, Name = user.Name });
 
             var result = await _userService.GetUserByIdAsync(user.Id, CancellationToken.None);
 

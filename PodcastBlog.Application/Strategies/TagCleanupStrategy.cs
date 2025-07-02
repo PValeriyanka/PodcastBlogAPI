@@ -1,5 +1,5 @@
-﻿using PodcastBlog.Domain.Models;
-using PodcastBlog.Application.Interfaces.Strategies;
+﻿using PodcastBlog.Application.Interfaces.Strategies;
+using PodcastBlog.Domain.Models;
 
 namespace PodcastBlog.Application.Strategies
 {

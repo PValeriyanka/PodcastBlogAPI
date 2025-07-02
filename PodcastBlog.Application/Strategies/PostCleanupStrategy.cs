@@ -26,14 +26,14 @@ namespace PodcastBlog.Application.Strategies
 
             foreach (var comment in post.Comments.ToList())
             {
-                await _commentService.DeleteCommentAsync(comment.CommentId, userPrincipal,cancellationToken);
+                await _commentService.DeleteCommentAsync(comment.CommentId, userPrincipal, cancellationToken);
             }
 
             foreach (var user in post.Likes.ToList())
             {
                 user.Liked.Remove(post);
             }
-            
+
             if (post.PodcastId is not null)
             {
                 var podcast = await _unitOfWork.Podcasts.GetByIdAsync(post.PodcastId.Value, cancellationToken);

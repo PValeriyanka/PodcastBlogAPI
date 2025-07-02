@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
+using PodcastBlog.Application.Exceptions;
 using PodcastBlog.Application.Interfaces.Services;
 using PodcastBlog.Application.Interfaces.Strategies;
 using PodcastBlog.Application.ModelsDto.User;
 using PodcastBlog.Domain.Interfaces;
 using PodcastBlog.Domain.Models;
 using PodcastBlog.Domain.Parameters;
-using PodcastBlog.Infrastructure.ExceptionsHandler.Exceptions;
 using System.Security.Claims;
 
 namespace PodcastBlog.Application.Services
@@ -117,7 +117,7 @@ namespace PodcastBlog.Application.Services
             int.TryParse(userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out int userId);
 
             var us = await _unitOfWork.Users.GetByIdAsync(userId, cancellationToken);
-            
+
             if (userId != user.Id && us.Role != UserRole.Administrator)
             {
                 _logger.LogWarning("Профиль удалить может только создатель или администатор");

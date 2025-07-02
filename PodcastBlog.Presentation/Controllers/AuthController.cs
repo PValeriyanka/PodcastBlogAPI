@@ -29,7 +29,7 @@ namespace PodcastBlog.Presentation.Controllers
         [HttpPost("registration")]
         public async Task<IActionResult> Register([FromBody] RegistrationDto registrationDto, CancellationToken cancellationToken)
         {
-         
+
             var result = await _authService.RegisterAsync(registrationDto, cancellationToken);
 
             return Ok();

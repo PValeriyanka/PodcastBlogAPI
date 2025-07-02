@@ -8,11 +8,11 @@
         public int AuthorId { get; set; }
         public DateTime PublishedAt { get; set; }
         public int? PodcastId { get; set; }
-        public PostStatus Status { get; set; } 
+        public PostStatus Status { get; set; }
         public int Views { get; set; } = 0;
 
         public User Author { get; set; }
-        public Podcast? Podcast { get; set; } 
+        public Podcast? Podcast { get; set; }
 
         public ICollection<Tag> Tags { get; set; } = new List<Tag>();
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
@@ -21,8 +21,8 @@
 
     public enum PostStatus
     {
-        Draft,          
-        Scheduled,       
-        Published        
+        Draft,
+        Scheduled,
+        Published
     }
 }
